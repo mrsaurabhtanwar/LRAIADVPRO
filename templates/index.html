@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="text-center mb-5">
+            <h1 class="display-4">Welcome to EduPlatform</h1>
+            <p class="lead">Intelligent learning with AI-powered assessments and personalized recommendations</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+                        <h5 class="card-title">New Student?</h5>
+                        <p class="card-text">Register to start your learning journey with AI-powered assessments.</p>
+                        <a href="{{ url_for('register') }}" class="btn btn-primary">Register Now</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-sign-in-alt fa-3x text-success mb-3"></i>
+                        <h5 class="card-title">Returning Student?</h5>
+                        <p class="card-text">Login to continue your learning and track your progress.</p>
+                        <a href="{{ url_for('login') }}" class="btn btn-success">Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-chalkboard-teacher"></i> Teacher Login (Coming Soon)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

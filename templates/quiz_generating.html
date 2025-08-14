@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Generating - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="text-center">
+                <h2 class="mb-4">
+                    <i class="fas fa-cog fa-spin"></i> Generating Quiz
+                </h2>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ topic.name }}</h5>
+                        <p class="card-text">{{ topic.description }}</p>
+                        
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" id="progress-bar"></div>
+                        </div>
+                        
+                        <p id="status-text">Preparing your personalized quiz...</p>
+                        
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('quiz_selection') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Quiz Selection
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let progress = 0;
+const progressBar = document.getElementById('progress-bar');
+const statusText = document.getElementById('status-text');
+const taskId = "{{ task_id }}";
+
+const statusMessages = [
+    "Analyzing topic content...",
+    "Generating questions...",
+    "Creating answer choices...",
+    "Optimizing difficulty level...",
+    "Finalizing your quiz..."
+];
+
+function updateProgress() {
+    if (progress < 90) {
+        progress += Math.random() * 20;
+        progressBar.style.width = progress + '%';
+        
+        const messageIndex = Math.floor(progress / 20);
+        if (messageIndex < statusMessages.length) {
+            statusText.textContent = statusMessages[messageIndex];
+        }
+    }
+}
+
+// Update progress every 500ms
+const progressInterval = setInterval(updateProgress, 500);
+
+// Check quiz generation status
+function checkStatus() {
+    fetch(`/quiz_status/${taskId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.state === 'SUCCESS') {
+                clearInterval(progressInterval);
+                clearInterval(statusInterval);
+                progressBar.style.width = '100%';
+                statusText.textContent = "Quiz ready! Redirecting...";
+                
+                setTimeout(() => {
+                    window.location.href = `/quiz/${data.quiz_id}`;
+                }, 1000);
+            } else if (data.state === 'FAILURE') {
+                clearInterval(progressInterval);
+                clearInterval(statusInterval);
+                progressBar.classList.add('bg-danger');
+                statusText.textContent = "Error generating quiz. Please try again.";
+            }
+        })
+        .catch(error => {
+            console.error('Error checking status:', error);
+        });
+}
+
+// Check status every 2 seconds
+const statusInterval = setInterval(checkStatus, 2000);
+
+// Initial status check
+checkStatus();
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="error-page">
+                <h1 class="display-1 text-primary">404</h1>
+                <h2 class="mb-4">Page Not Found</h2>
+                <p class="lead">The page you're looking for doesn't exist.</p>
+                <p class="text-muted">It might have been moved, deleted, or you entered the wrong URL.</p>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-home"></i> Go Home
+                    </a>
+                    <a href="{{ url_for('dashboard') if session.get('user_id') else url_for('login') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Go Back
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

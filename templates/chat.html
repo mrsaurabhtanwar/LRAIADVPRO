@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}AI Tutor - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card" style="height: 600px;">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot text-primary"></i> AI Tutor Chat
+                    <button class="btn btn-sm btn-outline-danger float-end" onclick="endChat()">
+                        End Chat
+                    </button>
+                </h5>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <div id="chat-messages" class="flex-grow-1 overflow-auto mb-3" style="max-height: 450px;">
+                    {% for message in messages %}
+                    <div class="message mb-3 {{ 'text-end' if message.sender == 'student' else 'text-start' }}">
+                        <div class="d-inline-block p-2 rounded {{ 'bg-primary text-white' if message.sender == 'student' else 'bg-light' }}" style="max-width: 70%;">
+                            <strong>{{ 'You' if message.sender == 'student' else 'AI Tutor' }}:</strong><br>
+                            {{ message.message }}
+                        </div>
+                        <small class="d-block text-muted">{{ message.timestamp.strftime('%H:%M') }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="message-input" class="form-control" placeholder="Ask me anything about your studies..." onkeypress="handleKeyPress(event)">
+                    <button class="btn btn-primary" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const sessionId = {{ session.id }};
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+}
+
+function sendMessage() {
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    // Clear input
+    messageInput.value = '';
+    
+    // Add user message to chat
+    addMessageToChat('You', message, 'student');
+    
+    // Show typing indicator
+    addTypingIndicator();
+    
+    // Send to server
+    fetch('/chat/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: message,
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        removeTypingIndicator();
+        addMessageToChat('AI Tutor', data.ai_response, 'ai');
+    })
+    .catch(error => {
+        removeTypingIndicator();
+        addMessageToChat('AI Tutor', 'Sorry, I encountered an error. Please try again.', 'ai');
+    });
+}
+
+function addMessageToChat(sender, message, type) {
+    const chatMessages = document.getElementById('chat-messages');
+    const isStudent = type === 'student';
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message mb-3 ${isStudent ? 'text-end' : 'text-start'}`;
+    messageDiv.innerHTML = `
+        <div class="d-inline-block p-2 rounded ${isStudent ? 'bg-primary text-white' : 'bg-light'}" style="max-width: 70%;">
+            <strong>${sender}:</strong><br>
+            ${message}
+        </div>
+        <small class="d-block text-muted">${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</small>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addTypingIndicator() {
+    const chatMessages = document.getElementById('chat-messages');
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typing-indicator';
+    typingDiv.className = 'message mb-3 text-start';
+    typingDiv.innerHTML = `
+        <div class="d-inline-block p-2 rounded bg-light">
+            <strong>AI Tutor:</strong><br>
+            <span class="typing-dots">Thinking...</span>
+        </div>
+    `;
+    
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+function endChat() {
+    fetch('/chat/end', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(() => {
+        window.location.href = '{{ url_for("dashboard") }}';
+    });
+}
+</script>
+{% endblock %}

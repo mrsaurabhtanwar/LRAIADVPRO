@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Welcome, {{ student.name }}!</h2>
+        <p class="text-muted">Choose an activity to continue your learning journey.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Take Quiz Card -->
+    <div class="col-md-4">
+        <div class="card h-100 border-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-question-circle fa-4x text-primary mb-3"></i>
+                <h5 class="card-title">Take Quiz</h5>
+                <p class="card-text">Test your knowledge with adaptive quizzes that adjust to your learning level.</p>
+                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">Start Quiz</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Tutor Card -->
+    <div class="col-md-4">
+        <div class="card h-100 border-success">
+            <div class="card-body text-center">
+                <i class="fas fa-robot fa-4x text-success mb-3"></i>
+                <h5 class="card-title">AI Tutor</h5>
+                <p class="card-text">Get instant help and explanations from our AI-powered tutor.</p>
+                <a href="#" onclick="alert('AI Chat feature coming soon!')" class="btn btn-success">Chat Coming Soon</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Card -->
+    <div class="col-md-4">
+        <div class="card h-100 border-info">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-4x text-info mb-3"></i>
+                <h5 class="card-title">View Progress</h5>
+                <p class="card-text">Track your learning progress and get personalized recommendations.</p>
+                <a href="#" onclick="alert('Progress tracking coming soon!')" class="btn btn-info">View Progress</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if recent_quizzes %}
+<div class="row mt-5">
+    <div class="col-12">
+        <h4>Recent Quiz Results</h4>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Quiz</th>
+                        <th>Score</th>
+                        <th>Performance</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attempt in recent_quizzes %}
+                    <tr>
+                        <td>{{ attempt.quiz.title }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if attempt.score >= 80 else 'warning' if attempt.score >= 60 else 'danger' }}">
+                                {{ attempt.score }}%
+                            </span>
+                        </td>
+                        <td>
+                            {% if attempt.predicted_performance %}
+                                <span class="badge bg-secondary">{{ attempt.predicted_performance.title() }}</span>
+                            {% else %}
+                                <span class="text-muted">Processing...</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ attempt.completed_at.strftime('%Y-%m-%d %H:%M') if attempt.completed_at else 'In Progress' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

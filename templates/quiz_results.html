@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results - {{ quiz.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .performance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .ml-insights {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .recommendation-card {
+            border-left: 4px solid #28a745;
+            background: #f8f9fa;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0 10px 10px 0;
+        }
+        .category-badge {
+            font-size: 1.1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+        }
+        .struggling { background-color: #dc3545; }
+        .average { background-color: #ffc107; color: #000; }
+        .advanced { background-color: #28a745; }
+        .confidence-bar {
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s ease;
+        }
+        .question-analysis {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .question-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            font-weight: bold;
+        }
+        .question-content {
+            padding: 1rem;
+        }
+        .correct-answer { color: #28a745; }
+        .incorrect-answer { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="fas fa-graduation-cap me-2"></i>EduPlatform
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a class="nav-link" href="{{ url_for('student_profile') }}">Profile</a>
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Performance Overview -->
+        <div class="performance-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="mb-1">{{ quiz.title }} Results</h2>
+                    <p class="mb-0 opacity-75">{{ topic.name }} • Completed {{ attempt.completed_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="display-4 fw-bold">{{ "%.0f" | format(attempt.score) }}%</div>
+                    <small>Score</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- ML Insights Section -->
+            <div class="col-lg-8">
+                {% if ml_prediction %}
+                <div class="ml-insights">
+                    <h4><i class="fas fa-brain me-2"></i>AI Learning Insights</h4>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="small fw-bold">Performance Category</label>
+                                <div>
+                                    <span class="badge category-badge {{ ml_prediction.category }}">
+                                        {% if ml_prediction.category == 'struggling' %}
+                                            <i class="fas fa-hand-holding-heart me-1"></i>Needs Support
+                                        {% elif ml_prediction.category == 'advanced' %}
+                                            <i class="fas fa-rocket me-1"></i>Advanced
+                                        {% else %}
+                                            <i class="fas fa-balance-scale me-1"></i>On Track
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="small fw-bold">Predicted Score</label>
+                                <div class="h5">{{ "%.1f" | format(ml_prediction.predicted_score) }}%</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="small fw-bold">AI Confidence</label>
+                                <div class="confidence-bar mt-1">
+                                    <div class="confidence-fill" style="width: {{ (ml_prediction.confidence_level * 100)|round }}%"></div>
+                                </div>
+                                <small>{{ "%.0f" | format(ml_prediction.confidence_level * 100) }}% confident</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="small fw-bold">Learning Style</label>
+                                <div>
+                                    {% set profile = ml_prediction.learner_profile %}
+                                    {% if profile.learning_pace == 'fast' %}
+                                        <i class="fas fa-tachometer-alt text-success me-1"></i>Fast Learner
+                                    {% elif profile.learning_pace == 'deliberate' %}
+                                        <i class="fas fa-clock text-info me-1"></i>Thoughtful
+                                    {% else %}
+                                        <i class="fas fa-equals text-warning me-1"></i>Steady Pace
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Detailed Question Analysis -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-chart-bar me-2"></i>Question by Question Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for i, qa in enumerate(question_analysis) %}
+                        <div class="question-analysis">
+                            <div class="question-header">
+                                <div class="row">
+                                    <div class="col">
+                                        Question {{ i + 1 }}
+                                        {% if qa.is_correct %}
+                                            <span class="badge bg-success ms-2">Correct</span>
+                                        {% else %}
+                                            <span class="badge bg-danger ms-2">Incorrect</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-auto">
+                                        <small>Confidence: {{ "%.0f" | format(qa.confidence * 100) }}%</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="question-content">
+                                <p class="fw-bold">{{ qa.question }}</p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Your Answer:</small>
+                                        <div class="{% if qa.is_correct %}correct-answer{% else %}incorrect-answer{% endif %}">
+                                            {{ qa.user_answer or 'No answer provided' }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Correct Answer:</small>
+                                        <div class="correct-answer">{{ qa.correct_answer }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations Sidebar -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-lightbulb me-2"></i>Personalized Recommendations</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recommendations %}
+                            {% for rec in recommendations %}
+                            <div class="recommendation-card">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ rec.title }}</h6>
+                                        <p class="mb-2 small text-muted">{{ rec.description }}</p>
+                                        {% if rec.recommendation_type == 'quiz_difficulty' %}
+                                            <span class="badge bg-primary">Next Quiz</span>
+                                        {% elif rec.recommendation_type == 'study_material' %}
+                                            <span class="badge bg-info">Study Guide</span>
+                                        {% elif rec.recommendation_type == 'focus_area' %}
+                                            <span class="badge bg-warning text-dark">Focus Area</span>
+                                        {% endif %}
+                                    </div>
+                                    <form method="POST" action="{{ url_for('complete_recommendation', rec_id=rec.id) }}" class="ms-2">
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as completed">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-robot fa-2x mb-2"></i>
+                                <p>No specific recommendations at this time. Keep practicing!</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- Quick Stats -->
+                        <div class="mt-4 pt-3 border-top">
+                            <h6>Quick Stats</h6>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="h5 mb-0 text-primary">{{ attempt.hints_used or 0 }}</div>
+                                    <small class="text-muted">Hints Used</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="h5 mb-0 text-info">
+                                        {{ "%.1f" | format((attempt.completed_at - attempt.started_at).total_seconds() / 60) }}m
+                                    </div>
+                                    <small class="text-muted">Time Taken</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="h5 mb-0 text-success">{{ "%.0f" | format(attempt.average_confidence * 100) }}%</div>
+                                    <small class="text-muted">Avg Confidence</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Next Actions -->
+                <div class="card mt-3">
+                    <div class="card-body text-center">
+                        <h6>What's Next?</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">
+                                <i class="fas fa-redo me-2"></i>Take Another Quiz
+                            </a>
+                            <a href="{{ url_for('student_profile') }}" class="btn btn-outline-info">
+                                <i class="fas fa-user-chart me-2"></i>View Progress
+                            </a>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-home me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add some interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate confidence bars
+            const confidenceFills = document.querySelectorAll('.confidence-fill');
+            confidenceFills.forEach(fill => {
+                const width = fill.style.width;
+                fill.style.width = '0';
+                setTimeout(() => {
+                    fill.style.width = width;
+                }, 500);
+            });
+        });
+    </script>
+</body>
+</html>

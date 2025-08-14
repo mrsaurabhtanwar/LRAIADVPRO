@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Question {{ question_num }} - {{ quiz.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .quiz-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+        .question-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin: 0 auto;
+            max-width: 800px;
+        }
+        .progress-bar-container {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+        .option-button {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+        .option-button:hover {
+            background: #e9ecef;
+            border-color: #007bff;
+        }
+        .option-button.selected {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        .confidence-slider {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        .timer-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .hint-card {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            display: none;
+        }
+        .hint-button {
+            background: linear-gradient(45deg, #ffa726, #ff7043);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 0.5rem 1rem;
+        }
+        .confidence-display {
+            background: linear-gradient(90deg, #28a745, #20c997);
+            color: white;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            display: inline-block;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <div class="container">
+            <!-- Progress Header -->
+            <div class="progress-bar-container text-center">
+                <h4 class="mb-3">{{ quiz.title }} - Question {{ question_num }} of {{ total_questions }}</h4>
+                <div class="progress mb-3" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ (question_num / total_questions * 100) }}%"></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <i class="fas fa-clock me-2"></i>
+                        <span id="timer" class="timer-display">00:00</span>
+                    </div>
+                    <div class="col-md-6">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <span id="hintsUsed">{{ hints_used or 0 }}</span> hints used
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Card -->
+            <div class="question-card">
+                <form id="questionForm" method="POST" action="{{ url_for('submit_answer', question_num=question_num) }}">
+                    <!-- Question Text -->
+                    <div class="mb-4">
+                        <h5 class="question-text">{{ question.question }}</h5>
+                    </div>
+
+                    <!-- Answer Options -->
+                    <div class="mb-4" id="optionsContainer">
+                        {% for i, option in enumerate(question.options) %}
+                        <div class="option-button" data-value="{{ option }}" onclick="selectOption(this, '{{ option }}')">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="far fa-circle option-icon"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    {{ option }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Confidence Slider -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="fas fa-chart-bar me-2"></i>How confident are you in your answer?
+                        </label>
+                        <div class="d-flex align-items-center">
+                            <span class="me-3">Not sure</span>
+                            <input type="range" class="confidence-slider form-range" 
+                                   min="0" max="100" value="50" id="confidenceSlider" name="confidence">
+                            <span class="ms-3">Very sure</span>
+                        </div>
+                        <div class="text-center mt-2">
+                            <div class="confidence-display">
+                                <span id="confidenceValue">50</span>% confident
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hint Section -->
+                    <div class="mb-4">
+                        <button type="button" class="hint-button" onclick="requestHint()">
+                            <i class="fas fa-lightbulb me-2"></i>Need a hint?
+                        </button>
+                        
+                        <!-- Progressive hints -->
+                        {% if question.hints %}
+                            {% for i, hint in enumerate(question.hints) %}
+                            <div class="hint-card" id="hint{{ i + 1 }}">
+                                <div class="d-flex">
+                                    <i class="fas fa-info-circle text-warning me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Hint {{ i + 1 }}:</strong>
+                                        <p class="mb-0 mt-1">{{ hint }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- Hidden fields for ML tracking -->
+                    <input type="hidden" name="answer" id="selectedAnswer">
+                    <input type="hidden" name="time_spent" id="timeSpent">
+                    <input type="hidden" name="hints_used" id="hintsUsedInput" value="0">
+                    <input type="hidden" name="reached_final_hint" id="reachedFinalHint" value="false">
+                    <input type="hidden" name="confidence" id="confidenceInput" value="0.5">
+
+                    <!-- Submit Button -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="fas fa-arrow-right me-2"></i>
+                            {% if question_num == total_questions %}
+                                Complete Quiz
+                            {% else %}
+                                Next Question
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Navigation -->
+            <div class="text-center mt-4">
+                {% if question_num > 1 %}
+                <a href="{{ url_for('quiz_question', question_num=question_num - 1) }}" class="btn btn-outline-light me-3">
+                    <i class="fas fa-arrow-left me-2"></i>Previous
+                </a>
+                {% endif %}
+                
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">
+                    <i class="fas fa-times me-2"></i>Exit Quiz
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ML Feature Tracking Variables
+        let startTime = new Date();
+        let hintsRequested = 0;
+        let selectedAnswer = null;
+        let maxHints = {{ question.hints|length if question.hints else 0 }};
+        let hasReachedFinalHint = false;
+
+        // Timer functionality
+        function updateTimer() {
+            const now = new Date();
+            const elapsed = Math.floor((now - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            document.getElementById('timer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update hidden field for ML tracking
+            document.getElementById('timeSpent').value = elapsed;
+        }
+
+        // Start timer
+        setInterval(updateTimer, 1000);
+
+        // Answer selection
+        function selectOption(element, value) {
+            // Remove previous selections
+            document.querySelectorAll('.option-button').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.querySelector('.option-icon').className = 'far fa-circle option-icon';
+            });
+            
+            // Select current option
+            element.classList.add('selected');
+            element.querySelector('.option-icon').className = 'fas fa-check-circle option-icon';
+            
+            selectedAnswer = value;
+            document.getElementById('selectedAnswer').value = value;
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        // Confidence slider
+        document.getElementById('confidenceSlider').addEventListener('input', function(e) {
+            const value = e.target.value;
+            document.getElementById('confidenceValue').textContent = value;
+            document.getElementById('confidenceInput').value = value / 100; // Convert to 0-1 scale
+        });
+
+        // Progressive hint system
+        function requestHint() {
+            if (hintsRequested < maxHints) {
+                hintsRequested++;
+                document.getElementById(`hint${hintsRequested}`).style.display = 'block';
+                
+                // Update hint tracking
+                document.getElementById('hintsUsedInput').value = hintsRequested;
+                document.getElementById('hintsUsed').textContent = hintsRequested;
+                
+                // Check if this is the final hint
+                if (hintsRequested === maxHints) {
+                    hasReachedFinalHint = true;
+                    document.getElementById('reachedFinalHint').value = 'true';
+                    
+                    // Disable hint button
+                    const hintBtn = document.querySelector('.hint-button');
+                    hintBtn.disabled = true;
+                    hintBtn.innerHTML = '<i class="fas fa-lightbulb me-2"></i>All hints used';
+                }
+                
+                // Track hint usage for ML
+                trackHintUsage(hintsRequested, hasReachedFinalHint);
+            }
+        }
+
+        // ML tracking functions
+        function trackHintUsage(hintNumber, isFinalHint) {
+            // This could send data to an analytics endpoint
+            console.log(`Hint ${hintNumber} requested. Final hint: ${isFinalHint}`);
+        }
+
+        function trackAnswerSelection(answer, confidence) {
+            // Track when user selects an answer
+            console.log(`Answer selected: ${answer}, Confidence: ${confidence}%`);
+        }
+
+        function trackTimeToFirstAnswer() {
+            // Track time to first answer selection
+            if (!window.firstAnswerTime && selectedAnswer) {
+                window.firstAnswerTime = (new Date() - startTime) / 1000;
+                console.log(`Time to first answer: ${window.firstAnswerTime} seconds`);
+            }
+        }
+
+        // Enhanced answer selection with ML tracking
+        function selectOption(element, value) {
+            // Remove previous selections
+            document.querySelectorAll('.option-button').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.querySelector('.option-icon').className = 'far fa-circle option-icon';
+            });
+            
+            // Select current option
+            element.classList.add('selected');
+            element.querySelector('.option-icon').className = 'fas fa-check-circle option-icon';
+            
+            selectedAnswer = value;
+            document.getElementById('selectedAnswer').value = value;
+            document.getElementById('submitBtn').disabled = false;
+            
+            // ML tracking
+            trackTimeToFirstAnswer();
+            const confidence = document.getElementById('confidenceSlider').value;
+            trackAnswerSelection(value, confidence);
+        }
+
+        // Form submission with validation
+        document.getElementById('questionForm').addEventListener('submit', function(e) {
+            if (!selectedAnswer) {
+                e.preventDefault();
+                alert('Please select an answer before continuing.');
+                return false;
+            }
+            
+            // Ensure all ML tracking fields are populated
+            document.getElementById('timeSpent').value = Math.floor((new Date() - startTime) / 1000);
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key >= '1' && e.key <= '4') {
+                const optionIndex = parseInt(e.key) - 1;
+                const options = document.querySelectorAll('.option-button');
+                if (options[optionIndex]) {
+                    const value = options[optionIndex].getAttribute('data-value');
+                    selectOption(options[optionIndex], value);
+                }
+            } else if (e.key === 'Enter' && selectedAnswer) {
+                document.getElementById('questionForm').submit();
+            } else if (e.key === 'h' || e.key === 'H') {
+                requestHint();
+            }
+        });
+
+        // Auto-save progress (optional)
+        function autoSaveProgress() {
+            if (selectedAnswer) {
+                const progressData = {
+                    question_num: {{ question_num }},
+                    answer: selectedAnswer,
+                    confidence: document.getElementById('confidenceSlider').value,
+                    hints_used: hintsRequested,
+                    time_spent: Math.floor((new Date() - startTime) / 1000)
+                };
+                
+                // Could send to server for progress saving
+                console.log('Auto-saving progress:', progressData);
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(autoSaveProgress, 30000);
+
+        // Page visibility API to pause timer when tab is not active
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // User switched tabs - pause timer logic could go here
+                console.log('Quiz tab hidden - user may be looking up answers');
+            } else {
+                console.log('Quiz tab visible again');
+            }
+        });
+
+        // Prevent right-click and other cheating attempts
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            // Disable F12, Ctrl+Shift+I, Ctrl+U, etc.
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                (e.ctrlKey && e.key === 'u')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

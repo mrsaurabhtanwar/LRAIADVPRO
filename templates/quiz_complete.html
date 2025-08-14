@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Complete - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="text-center">
+                <h2 class="mb-4">
+                    <i class="fas fa-check-circle text-success"></i> Quiz Complete!
+                </h2>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Your Results</h4>
+                        
+                        <div class="row text-center mb-4">
+                            <div class="col-md-4">
+                                <h3 class="text-primary">{{ "%.1f"|format(attempt.score) }}%</h3>
+                                <p class="text-muted">Overall Score</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h3 class="text-info">{{ attempt.correct_answers }}/{{ attempt.total_questions }}</h3>
+                                <p class="text-muted">Correct Answers</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h3 class="text-warning">{{ (attempt.time_spent_seconds // 60) }}m {{ (attempt.time_spent_seconds % 60) }}s</h3>
+                                <p class="text-muted">Time Spent</p>
+                            </div>
+                        </div>
+                        
+                        {% if attempt.score >= 80 %}
+                            <div class="alert alert-success">
+                                <i class="fas fa-trophy"></i>
+                                <strong>Excellent work!</strong> You've mastered this topic.
+                            </div>
+                        {% elif attempt.score >= 60 %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-thumbs-up"></i>
+                                <strong>Good job!</strong> You're on the right track.
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-book"></i>
+                                <strong>Keep practicing!</strong> Review the material and try again.
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mt-4">
+                            <p class="text-muted">
+                                <i class="fas fa-robot"></i>
+                                Our AI is analyzing your performance to provide personalized recommendations.
+                                Check your dashboard for detailed insights!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-tachometer-alt"></i> Go to Dashboard
+                    </a>
+                    <a href="{{ url_for('quiz_selection') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-redo"></i> Take Another Quiz
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

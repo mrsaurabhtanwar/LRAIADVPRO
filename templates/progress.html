@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}My Progress - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>Your Learning Progress</h2>
+        <p class="text-muted">Track your performance and follow personalized recommendations</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Progress Overview -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">Overall Progress</h5>
+                <div class="progress-circle mb-3">
+                    {% if attempts %}
+                    <h3 class="text-primary">{{ "%.1f"|format(attempts[0].score if attempts else 0) }}%</h3>
+                    <p class="text-muted">Latest Score</p>
+                    {% else %}
+                    <h3 class="text-muted">No Data</h3>
+                    <p class="text-muted">Take your first quiz!</p>
+                    {% endif %}
+                </div>
+                {% if progress_trend != 0 %}
+                <span class="badge bg-{{ 'success' if progress_trend > 0 else 'warning' }}">
+                    <i class="fas fa-{{ 'arrow-up' if progress_trend > 0 else 'arrow-down' }}"></i>
+                    {{ "%.1f"|format(abs(progress_trend)) }}% {{ 'improvement' if progress_trend > 0 else 'change' }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Recommendations -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Personalized Recommendations</h5>
+            </div>
+            <div class="card-body">
+                {% if current_recommendations %}
+                <ul class="list-group list-group-flush">
+                    {% for recommendation in current_recommendations %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ recommendation }}
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="followRecommendation('take_quiz')">
+                                Take Quiz
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="followRecommendation('get_help')">
+                                Get Help
+                            </button>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted">Complete a quiz to get personalized recommendations!</p>
+                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">Take Your First Quiz</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quiz History -->
+{% if attempts %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quiz History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Quiz</th>
+                                <th>Score</th>
+                                <th>Performance Level</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in attempts %}
+                            <tr>
+                                <td>{{ attempt.quiz.title }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress me-2" style="width: 100px; height: 8px;">
+                                            <div class="progress-bar bg-{{ 'success' if attempt.score >= 80 else 'warning' if attempt.score >= 60 else 'danger' }}" 
+                                                 style="width: {{ attempt.score }}%"></div>
+                                        </div>
+                                        <span>{{ attempt.score }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if attempt.predicted_performance == 'excellent' else 'primary' if attempt.predicted_performance == 'good' else 'warning' if attempt.predicted_performance == 'needs_improvement' else 'danger' }}">
+                                        {{ attempt.predicted_performance.replace('_', ' ').title() if attempt.predicted_performance else 'Processing...' }}
+                                    </span>
+                                </td>
+                                <td>{{ attempt.completed_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info" onclick="showDetails({{ attempt.id }})">
+                                        View Details
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Chart -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Trend</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="performanceChart" width="400" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Performance Chart
+const ctx = document.getElementById('performanceChart').getContext('2d');
+const chartData = {
+    labels: [{% for attempt in attempts|reverse %}'{{ attempt.quiz.title[:10] + "..." if attempt.quiz.title|length > 10 else attempt.quiz.title }}'{{ "," if not loop.last }}{% endfor %}],
+    datasets: [{
+        label: 'Score %',
+        data: [{% for attempt in attempts|reverse %}{{ attempt.score }}{{ "," if not loop.last }}{% endfor %}],
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        tension: 0.1
+    }]
+};
+
+new Chart(ctx, {
+    type: 'line',
+    data: chartData,
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+});
+
+function followRecommendation(action) {
+    fetch('/recommendations/follow', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({action: action})
+    })
+    .then(response => response.json())
+    .then(data => {
+        window.location.href = data.redirect;
+    });
+}
+
+function showDetails(attemptId) {
+    // Implementation for showing detailed quiz results
+    alert('Detailed view for attempt ' + attemptId + ' - implement as needed');
+}
+</script>
+{% endif %}
+{% endblock %}

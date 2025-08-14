@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Selection - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <h2 class="mb-4">
+                <i class="fas fa-list"></i> Select Quiz Topic
+            </h2>
+            
+            {% if topics %}
+                <div class="row">
+                    {% for topic in topics %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ topic.name }}</h5>
+                                    <p class="card-text">{{ topic.description }}</p>
+                                    <p class="text-muted">
+                                        <small>
+                                            <i class="fas fa-book"></i> {{ topic.subject }} |
+                                            <i class="fas fa-signal"></i> {{ topic.difficulty_level|title }}
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer">
+                                    <a href="{{ url_for('start_quiz', topic_id=topic.id) }}" 
+                                       class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-play"></i> Start Quiz
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>No quizzes available yet.</strong> 
+                    Please check back later or contact your teacher.
+                </div>
+            {% endif %}
+            
+            <div class="mt-4 text-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

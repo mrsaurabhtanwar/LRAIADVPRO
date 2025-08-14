@@ -1,0 +1,11 @@
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Werkzeug==2.3.7
+redis==4.6.0
+celery==5.3.4
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.5.2
+openai==0.28.1
+python-dotenv==1.0.0
+requests==2.31.0

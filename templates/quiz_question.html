@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Question {{ question_num }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">{{ quiz.title if quiz else 'Quiz Question' }}</h4>
+                    <small>Question {{ question_num }} of {{ total_questions }}</small>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Progress Bar -->
+                    <div class="progress mb-4">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ (question_num / total_questions * 100) }}%" 
+                             aria-valuenow="{{ question_num }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="{{ total_questions }}">
+                            {{ question_num }}/{{ total_questions }}
+                        </div>
+                    </div>
+
+                    <!-- Question -->
+                    <div class="question-container mb-4">
+                        <h5 class="question-text">{{ question.question }}</h5>
+                    </div>
+
+                    <!-- Answer Form -->
+                    <form method="POST" action="{{ url_for('submit_answer', question_num=question_num) }}" id="answerForm">
+                        <div class="answer-options mb-4">
+                            {% if question.options %}
+                                <!-- Multiple Choice -->
+                                {% for option in question.options %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="answer" 
+                                           id="option{{ loop.index }}" value="{{ option }}" required>
+                                    <label class="form-check-label" for="option{{ loop.index }}">
+                                        {{ option }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Text Input -->
+                                <div class="mb-3">
+                                    <label for="textAnswer" class="form-label">Your Answer:</label>
+                                    <input type="text" class="form-control" id="textAnswer" 
+                                           name="answer" required placeholder="Enter your answer">
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Confidence Level -->
+                        <div class="mb-4">
+                            <label for="confidence" class="form-label">How confident are you? (1-10)</label>
+                            <input type="range" class="form-range" id="confidence" name="confidence" 
+                                   min="0.1" max="1.0" step="0.1" value="0.5">
+                            <div class="d-flex justify-content-between">
+                                <small>Not Confident</small>
+                                <small>Very Confident</small>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Fields for ML Features -->
+                        <input type="hidden" name="time_spent" id="timeSpent" value="0">
+                        <input type="hidden" name="hints_used" id="hintsUsed" value="0">
+                        <input type="hidden" name="reached_final_hint" id="reachedFinalHint" value="false">
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                {% if question_num < total_questions %}
+                                    Next Question
+                                {% else %}
+                                    Finish Quiz
+                                {% endif %}
+                                <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Hint System (Optional) -->
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="requestHint()">
+                            <i class="fas fa-lightbulb"></i> Need a Hint?
+                        </button>
+                        <div id="hintContainer" class="mt-2 d-none">
+                            <div class="alert alert-info">
+                                <small id="hintText"></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer text-muted">
+                    <div class="row">
+                        <div class="col">
+                            <small>Time elapsed: <span id="timeDisplay">00:00</span></small>
+                        </div>
+                        <div class="col text-end">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-home"></i> Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Timer functionality
+let startTime = Date.now();
+let hintsUsed = 0;
+
+function updateTimer() {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    document.getElementById('timeDisplay').textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('timeSpent').value = elapsed;
+}
+
+// Update timer every second
+setInterval(updateTimer, 1000);
+
+// Hint functionality
+function requestHint() {
+    hintsUsed++;
+    document.getElementById('hintsUsed').value = hintsUsed;
+    
+    // Show hint container
+    const hintContainer = document.getElementById('hintContainer');
+    const hintText = document.getElementById('hintText');
+    
+    // Simple hint system (you could make this more sophisticated)
+    const hints = [
+        "Read the question carefully and consider all options.",
+        "Think about what you've learned in class about this topic.",
+        "Eliminate obviously wrong answers first.",
+        "Consider the context and key terms in the question."
+    ];
+    
+    if (hintsUsed <= hints.length) {
+        hintText.textContent = `Hint ${hintsUsed}: ${hints[hintsUsed - 1]}`;
+        hintContainer.classList.remove('d-none');
+        
+        if (hintsUsed >= hints.length) {
+            document.getElementById('reachedFinalHint').value = 'true';
+        }
+    }
+}
+
+// Update confidence display
+document.getElementById('confidence').addEventListener('input', function() {
+    const value = Math.round(this.value * 10);
+    const labels = ['1 (Low)', '2', '3', '4', '5 (Medium)', '6', '7', '8', '9', '10 (High)'];
+    this.title = labels[value - 1] || 'Confidence Level';
+});
+
+// Form submission handler
+document.getElementById('answerForm').addEventListener('submit', function() {
+    updateTimer();
+});
+</script>
+
+{% endblock %}
