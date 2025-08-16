@@ -25,7 +25,11 @@
                                 <p class="text-muted">Correct Answers</p>
                             </div>
                             <div class="col-md-4">
-                                <h3 class="text-warning">{{ (attempt.time_spent_seconds // 60) }}m {{ (attempt.time_spent_seconds % 60) }}s</h3>
+                                {% if attempt.time_spent_seconds %}
+                                    <h3 class="text-warning">{{ (attempt.time_spent_seconds // 60) }}m {{ (attempt.time_spent_seconds % 60) }}s</h3>
+                                {% else %}
+                                    <h3 class="text-warning">--m --s</h3>
+                                {% endif %}
                                 <p class="text-muted">Time Spent</p>
                             </div>
                         </div>

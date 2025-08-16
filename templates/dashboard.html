@@ -30,7 +30,7 @@
                 <i class="fas fa-robot fa-4x text-success mb-3"></i>
                 <h5 class="card-title">AI Tutor</h5>
                 <p class="card-text">Get instant help and explanations from our AI-powered tutor.</p>
-                <a href="#" onclick="alert('AI Chat feature coming soon!')" class="btn btn-success">Chat Coming Soon</a>
+                <a href="{{ url_for('chat_interface') }}" class="btn btn-success">Start Chat</a>
             </div>
         </div>
     </div>
@@ -42,7 +42,7 @@
                 <i class="fas fa-chart-line fa-4x text-info mb-3"></i>
                 <h5 class="card-title">View Progress</h5>
                 <p class="card-text">Track your learning progress and get personalized recommendations.</p>
-                <a href="#" onclick="alert('Progress tracking coming soon!')" class="btn btn-info">View Progress</a>
+                <a href="{{ url_for('view_progress') }}" class="btn btn-info">View Progress</a>
             </div>
         </div>
     </div>

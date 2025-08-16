@@ -6,40 +6,162 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            <h2 class="mb-4">
-                <i class="fas fa-list"></i> Select Quiz Topic
-            </h2>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">
+                    <i class="fas fa-list"></i> Available Quizzes
+                </h2>
+                <a href="{{ url_for('quiz_generation_form') }}" class="btn btn-success">
+                    <i class="fas fa-magic"></i> 🤖 Generate AI Quiz
+                </a>
+            </div>
             
-            {% if topics %}
-                <div class="row">
-                    {% for topic in topics %}
-                        <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card h-100">
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ topic.name }}</h5>
-                                    <p class="card-text">{{ topic.description }}</p>
-                                    <p class="text-muted">
-                                        <small>
-                                            <i class="fas fa-book"></i> {{ topic.subject }} |
-                                            <i class="fas fa-signal"></i> {{ topic.difficulty_level|title }}
-                                        </small>
-                                    </p>
+            {% if quizzes %}
+                <!-- Quiz Topics Tabs -->
+                {% if quiz_topics|length > 1 %}
+                <ul class="nav nav-tabs mb-4" id="quizTopicTabs" role="tablist">
+                    {% for topic in quiz_topics.keys() %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                id="{{ topic|replace(' ', '-')|lower }}-tab" 
+                                data-bs-toggle="tab" 
+                                data-bs-target="#{{ topic|replace(' ', '-')|lower }}-pane" 
+                                type="button" role="tab">
+                            {{ topic }} ({{ quiz_topics[topic]|length }})
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <!-- Tab Content -->
+                <div class="tab-content" id="quizTopicTabsContent">
+                    {% for topic, topic_quizzes in quiz_topics.items() %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                         id="{{ topic|replace(' ', '-')|lower }}-pane" 
+                         role="tabpanel">
+                        <div class="row">
+                            {% for quiz in topic_quizzes %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card h-100 quiz-card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ quiz.title }}</h5>
+                                        <p class="card-text text-muted">{{ quiz.description or 'Test your knowledge on this topic' }}</p>
+                                        
+                                        <div class="quiz-meta mb-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-questions"></i> {{ quiz.questions|length }} questions
+                                                <br>
+                                                <i class="fas fa-signal"></i> {{ quiz.difficulty|title }} level
+                                                {% if quiz.time_limit %}
+                                                <br>
+                                                <i class="fas fa-clock"></i> {{ quiz.time_limit }} minutes
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        
+                                        <!-- Quiz Stats -->
+                                        {% if quiz.attempts %}
+                                        <div class="quiz-stats mb-3">
+                                            <small class="text-success">
+                                                <i class="fas fa-users"></i> 
+                                                {{ quiz.attempts|length }} attempts
+                                                {% if quiz.attempts %}
+                                                | Avg Score: {{ "%.1f"|format((quiz.attempts|sum(attribute='score')/quiz.attempts|length)) }}%
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="card-footer">
+                                        <div class="d-grid">
+                                            <a href="{{ url_for('start_quiz', quiz_id=quiz.id) }}" 
+                                               class="btn btn-primary">
+                                                <i class="fas fa-play"></i> Take Quiz
+                                            </a>
+                                        </div>
+                                        
+                                        <!-- Preview button -->
+                                        <div class="mt-2">
+                                            <button class="btn btn-outline-info btn-sm w-100" 
+                                                    onclick="previewQuiz({{ quiz.id }})">
+                                                <i class="fas fa-eye"></i> Preview Questions
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                    <!-- Single topic display -->
+                    <div class="row">
+                        {% for quiz in quizzes %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 quiz-card">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ quiz.title }}</h5>
+                                    <p class="card-text text-muted">{{ quiz.description or 'Test your knowledge on this topic' }}</p>
+                                    
+                                    <div class="quiz-meta mb-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-question-circle"></i> {{ quiz.questions|length }} questions
+                                            <br>
+                                            <i class="fas fa-signal"></i> {{ quiz.difficulty|title }} level
+                                            {% if quiz.time_limit %}
+                                            <br>
+                                            <i class="fas fa-clock"></i> {{ quiz.time_limit }} minutes
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Topic badge -->
+                                    <div class="mb-2">
+                                        <span class="badge bg-secondary">{{ quiz.topic or 'General' }}</span>
+                                    </div>
+                                </div>
+                                
                                 <div class="card-footer">
-                                    <a href="{{ url_for('start_quiz', topic_id=topic.id) }}" 
-                                       class="btn btn-primary btn-sm w-100">
-                                        <i class="fas fa-play"></i> Start Quiz
-                                    </a>
+                                    <div class="d-grid">
+                                        <a href="{{ url_for('start_quiz', quiz_id=quiz.id) }}" 
+                                           class="btn btn-primary">
+                                            <i class="fas fa-play"></i> Take Quiz
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Preview button -->
+                                    <div class="mt-2">
+                                        <button class="btn btn-outline-info btn-sm w-100" 
+                                                onclick="previewQuiz({{ quiz.id }})">
+                                            <i class="fas fa-eye"></i> Preview Questions
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    {% endfor %}
-                </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
             {% else %}
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>No quizzes available yet.</strong> 
-                    Please check back later or contact your teacher.
+                <!-- No quizzes available -->
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-clipboard-list fa-5x text-muted"></i>
+                    </div>
+                    <h4 class="text-muted">No Quizzes Available</h4>
+                    <p class="text-muted mb-4">
+                        There are no active quizzes at the moment. 
+                        {% if session.get('is_teacher') %}
+                        <a href="{{ url_for('create_quiz') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Your First Quiz
+                        </a>
+                        {% else %}
+                        Please check back later or contact your teacher.
+                        {% endif %}
+                    </p>
                 </div>
             {% endif %}
             
@@ -51,4 +173,196 @@
         </div>
     </div>
 </div>
+
+<!-- Quiz Preview Modal -->
+<div class="modal fade" id="quizPreviewModal" tabindex="-1" aria-labelledby="quizPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quizPreviewModalLabel">Quiz Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="quizPreviewContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading quiz preview...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="startQuizFromPreview">Take This Quiz</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.quiz-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border: 1px solid #e0e0e0;
+}
+
+.quiz-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.quiz-meta {
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: 1px solid transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+    isolation: isolate;
+}
+
+.nav-tabs .nav-link.active {
+    color: #495057;
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.quiz-stats {
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+</style>
+
+<script>
+let currentPreviewQuizId = null;
+
+function previewQuiz(quizId) {
+    currentPreviewQuizId = quizId;
+    const modal = new bootstrap.Modal(document.getElementById('quizPreviewModal'));
+    
+    // Show loading state
+    document.getElementById('quizPreviewContent').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading quiz preview...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Fetch quiz preview data
+    fetch(`/api/quiz/${quizId}/preview`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayQuizPreview(data.quiz);
+            } else {
+                document.getElementById('quizPreviewContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Failed to load quiz preview: ${data.message || 'Unknown error'}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading quiz preview:', error);
+            document.getElementById('quizPreviewContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Failed to load quiz preview. Please try again.
+                </div>
+            `;
+        });
+}
+
+function displayQuizPreview(quiz) {
+    let previewHtml = `
+        <div class="quiz-preview">
+            <div class="mb-3">
+                <h4>${quiz.title}</h4>
+                <p class="text-muted">${quiz.description || 'Test your knowledge on this topic'}</p>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-question-circle fa-2x text-primary mb-2"></i>
+                        <div><strong>${quiz.questions.length}</strong></div>
+                        <small class="text-muted">Questions</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-signal fa-2x text-info mb-2"></i>
+                        <div><strong>${quiz.difficulty}</strong></div>
+                        <small class="text-muted">Difficulty</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                        <div><strong>${quiz.time_limit || 'No limit'}</strong></div>
+                        <small class="text-muted">Time Limit</small>
+                    </div>
+                </div>
+            </div>
+            
+            <h5>Sample Questions:</h5>
+            <div class="question-preview">
+    `;
+    
+    // Show first 3 questions as preview
+    quiz.questions.slice(0, 3).forEach((question, index) => {
+        previewHtml += `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Question ${index + 1}</h6>
+                    <p class="card-text">${question.question}</p>
+                    <small class="text-muted">
+                        <i class="fas fa-list"></i> Multiple choice question
+                    </small>
+                </div>
+            </div>
+        `;
+    });
+    
+    if (quiz.questions.length > 3) {
+        previewHtml += `
+            <div class="text-center text-muted">
+                <i class="fas fa-ellipsis-h"></i>
+                <small>... and ${quiz.questions.length - 3} more questions</small>
+            </div>
+        `;
+    }
+    
+    previewHtml += `
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('quizPreviewContent').innerHTML = previewHtml;
+    
+    // Update start quiz button
+    document.getElementById('startQuizFromPreview').onclick = function() {
+        window.location.href = `/quiz/${currentPreviewQuizId}`;
+    };
+}
+
+// Initialize tooltips if available
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof bootstrap !== 'undefined') {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+});
+</script>
 {% endblock %}

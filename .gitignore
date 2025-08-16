@@ -51,6 +51,8 @@ venv/
 ENV/
 env/
 .env
+.env.local
+.env.production
 
 # IDE
 .vscode/
@@ -68,25 +70,30 @@ env/
 ehthumbs.db
 Thumbs.db
 
-# Database
+# Database (keep local only)
 *.db
 *.sqlite
 *.sqlite3
+educational_platform.db
 
 # Logs
 *.log
 
-# ML Models (keep sample model)
-# student_model.pkl
-
 # Test files (optional - you may want to keep these)
-simple_test.py
-test_login.py
-populate_test_data.py
+test_*.py
 
-# Secrets and config
-.env
-config.py
-
-# Docker
-.dockerignore
+# Temporary and cleanup files
+*_backup.py
+*_old.py
+*_temp.py
+cleanup*.py
+fix_*.py
+debug_*.py
+explore_*.py
+get_*.py
+add_*.py
+update_*.py
+comprehensive_*.py
+advanced_*.py
+*.md
+!README.md

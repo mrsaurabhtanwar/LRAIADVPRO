@@ -1,23 +1,197 @@
-# models.py - Updated models to support ML predictions
-from extensions import db
-from datetime import datetime
-import json
+from __future__ import annotations
 
+# models.py - Enhanced database models for quiz system
+
+from extensions import db
+from sqlalchemy.orm import relationship, RelationshipProperty
+from sqlalchemy.dialects.postgresql import JSON
+from datetime import datetime, timezone
+import enum
+import json
+from typing import List, Optional
+
+class TaskStatus(enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class DifficultyLevel(enum.Enum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+class ContentSource(enum.Enum):
+    UPLOADED_FILE = "uploaded_file"
+    URL = "url"
+    PLAIN_TEXT = "plain_text"
+
+# Legacy Student model for backward compatibility with existing app
 class Student(db.Model):
     __tablename__ = 'students'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     student_id = db.Column(db.String(50), unique=True, nullable=False)
     class_name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
     # Relationships
     profile = db.relationship('StudentProfile', backref='student', uselist=False)
-    quiz_attempts = db.relationship('QuizAttempt', backref='student', lazy='dynamic')
+    quiz_attempts_old = db.relationship('QuizAttempt', foreign_keys='QuizAttempt.student_id', backref='student_old', lazy='dynamic')
     ml_predictions = db.relationship('MLPrediction', backref='student', lazy='dynamic')
+
+# Enhanced User model for new quiz system
+class User(db.Model):
+    __tablename__ = "users"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    email = db.Column(db.String(120), unique=True, index=True)
+    username = db.Column(db.String(80), unique=True, index=True)
+    hashed_password = db.Column(db.String(255))
+    is_teacher = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    quizzes = relationship("Quiz", back_populates="creator")
+    quiz_attempts = relationship("QuizAttempt", back_populates="user")
+
+class Task(db.Model):
+    __tablename__ = "tasks"
+    
+    id = db.Column(db.String(50), primary_key=True, index=True)  # UUID
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    task_type = db.Column(db.String(50))  # 'quiz_generation'
+    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.PENDING)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    result = db.Column(db.Text)  # JSON string for SQLite compatibility
+    error_message = db.Column(db.Text)
+    progress = db.Column(db.Float, default=0.0)
+    
+    # Task-specific parameters
+    parameters = db.Column(db.Text)  # JSON string for SQLite compatibility
+
+class Quiz(db.Model):
+    __tablename__ = "quizzes"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    title = db.Column(db.String(200), index=True)
+    description = db.Column(db.Text)
+    topic = db.Column(db.String(100), index=True)
+    difficulty = db.Column(db.String(20))  # Use String instead of Enum to avoid crashes
+    content_source_type = db.Column(db.String(20))  # Use String instead of Enum
+    content_source_data = db.Column(db.Text)  # JSON string for SQLite compatibility
+    creator_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    task_id = db.Column(db.String(50), db.ForeignKey("tasks.id"))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    is_active = db.Column(db.Boolean, default=True)
+    time_limit = db.Column(db.Integer)  # in minutes
+    
+    # Legacy fields for backward compatibility
+    questions_json = db.Column(db.Text)  # JSON string of questions (legacy)
+    max_score = db.Column(db.Integer, default=100)
+    topic_id = db.Column(db.Integer, db.ForeignKey('topics.id'))  # Legacy foreign key
+    
+    # Relationships
+    creator = relationship("User", back_populates="quizzes")
+    questions = relationship("Question", back_populates="quiz", cascade="all, delete-orphan")
+    quiz_attempts = relationship("QuizAttempt", back_populates="quiz")
+
+class Question(db.Model):
+    __tablename__ = "questions"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey("quizzes.id"))
+    question_text = db.Column(db.Text)
+    question_type = db.Column(db.String(50), default="multiple_choice")
+    points = db.Column(db.Float, default=1.0)
+    order_index = db.Column(db.Integer)
+    explanation = db.Column(db.Text)  # Explanation for the correct answer
+    
+    # Relationships
+    quiz = relationship("Quiz", back_populates="questions")
+    options = relationship("QuestionOption", back_populates="question", cascade="all, delete-orphan")
+    answers = relationship("Answer", back_populates="question")
+
+class QuestionOption(db.Model):
+    __tablename__ = "question_options"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey("questions.id"))
+    option_text = db.Column(db.Text)
+    is_correct = db.Column(db.Boolean, default=False)
+    order_index = db.Column(db.Integer)
+    
+    # Relationships
+    question = relationship("Question", back_populates="options")
+
+class QuizAttempt(db.Model):
+    __tablename__ = "quiz_attempts"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey("quizzes.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    started_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = db.Column(db.DateTime)
+    score = db.Column(db.Float)
+    max_score = db.Column(db.Float)
+    is_completed = db.Column(db.Boolean, default=False)
+    time_taken = db.Column(db.Integer)  # in seconds
+    
+    # Legacy fields for backward compatibility with existing ML system
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'))  # Legacy foreign key
+    hints_used = db.Column(db.Integer, default=0)
+    reached_final_hint = db.Column(db.Boolean, default=False)
+    attempt_number = db.Column(db.Integer, default=1)
+    time_to_first_answer = db.Column(db.Float)  # seconds
+    average_confidence = db.Column(db.Float, default=0.5)  # 0-1
+    responses_json = db.Column(db.Text)  # JSON of question responses
+    timing_data_json = db.Column(db.Text)  # JSON of timing per question
+    detailed_analysis_json = db.Column(db.Text)  # JSON of detailed question analysis
+    
+    # Relationships
+    quiz = relationship("Quiz", back_populates="quiz_attempts")
+    user = relationship("User", back_populates="quiz_attempts")
+    answers = relationship("Answer", back_populates="quiz_attempt")
+    ml_prediction = db.relationship('MLPrediction', backref='quiz_attempt', uselist=False)
+    recommendations = db.relationship('StudentRecommendation', backref='quiz_attempt', lazy='dynamic')
+    
+    @property
+    def time_spent_seconds(self):
+        """Alias for time_taken to maintain backward compatibility"""
+        return self.time_taken
+
+class Answer(db.Model):
+    __tablename__ = "answers"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    quiz_attempt_id = db.Column(db.Integer, db.ForeignKey("quiz_attempts.id"))
+    question_id = db.Column(db.Integer, db.ForeignKey("questions.id"))
+    selected_option_id = db.Column(db.Integer, db.ForeignKey("question_options.id"))
+    is_correct = db.Column(db.Boolean)
+    points_earned = db.Column(db.Float, default=0.0)
+    answered_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    quiz_attempt = relationship("QuizAttempt", back_populates="answers")
+    question = relationship("Question", back_populates="answers")
+    selected_option = relationship("QuestionOption")
+
+class ContentChunk(db.Model):
+    __tablename__ = "content_chunks"
+    
+    id = db.Column(db.Integer, primary_key=True, index=True)
+    quiz_id = db.Column(db.Integer, db.ForeignKey("quizzes.id"))
+    chunk_text = db.Column(db.Text)
+    chunk_index = db.Column(db.Integer)
+    topic_keywords = db.Column(db.Text)  # JSON string for SQLite compatibility
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+# ===================== LEGACY MODELS FOR BACKWARD COMPATIBILITY =====================
 
 class StudentProfile(db.Model):
     __tablename__ = 'student_profiles'
@@ -43,7 +217,7 @@ class StudentProfile(db.Model):
     # Serialized learner profile from ML
     learner_profile_json = db.Column(db.Text)  # JSON string of learner profile
     
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class Topic(db.Model):
     __tablename__ = 'topics'
@@ -54,54 +228,8 @@ class Topic(db.Model):
     difficulty_level = db.Column(db.String(20), default='medium')  # easy/medium/hard
     subject = db.Column(db.String(50), nullable=False)
     
-    # Relationships
-    quizzes = db.relationship('Quiz', backref='topic', lazy='dynamic')
-
-class Quiz(db.Model):
-    __tablename__ = 'quizzes'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    topic_id = db.Column(db.Integer, db.ForeignKey('topics.id'), nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    questions_json = db.Column(db.Text, nullable=False)  # JSON string of questions
-    difficulty_level = db.Column(db.String(20), default='medium')
-    max_score = db.Column(db.Integer, default=100)
-    time_limit = db.Column(db.Integer)  # in seconds
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    attempts = db.relationship('QuizAttempt', backref='quiz', lazy='dynamic')
-
-class QuizAttempt(db.Model):
-    __tablename__ = 'quiz_attempts'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    quiz_id = db.Column(db.Integer, db.ForeignKey('quizzes.id'), nullable=False)
-    
-    # Basic attempt info
-    started_at = db.Column(db.DateTime, default=datetime.utcnow)
-    completed_at = db.Column(db.DateTime)
-    score = db.Column(db.Float)
-    max_score = db.Column(db.Float, default=100)
-    
-    # ML Feature fields (matching your 15 features)
-    hints_used = db.Column(db.Integer, default=0)
-    reached_final_hint = db.Column(db.Boolean, default=False)
-    attempt_number = db.Column(db.Integer, default=1)
-    time_to_first_answer = db.Column(db.Float)  # seconds
-    average_confidence = db.Column(db.Float, default=0.5)  # 0-1
-    
-    # Detailed responses for analysis
-    responses_json = db.Column(db.Text)  # JSON of question responses
-    timing_data_json = db.Column(db.Text)  # JSON of timing per question
-    
-    # Status
-    is_completed = db.Column(db.Boolean, default=False)
-    
-    # Relationships
-    ml_prediction = db.relationship('MLPrediction', backref='quiz_attempt', uselist=False)
-    recommendations = db.relationship('StudentRecommendation', backref='quiz_attempt', lazy='dynamic')
+    # Relationships - Legacy quizzes that use topic_id
+    legacy_quizzes = db.relationship('Quiz', foreign_keys='Quiz.topic_id', backref='topic_legacy', lazy='dynamic')
 
 class MLPrediction(db.Model):
     __tablename__ = 'ml_predictions'
@@ -123,7 +251,7 @@ class MLPrediction(db.Model):
     
     # Metadata
     model_version = db.Column(db.String(50), default='v1.0')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     
     @property
     def learner_profile(self):
@@ -168,7 +296,8 @@ class StudentRecommendation(db.Model):
     # Status tracking
     is_active = db.Column(db.Boolean, default=True)
     is_completed = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    completed_at = db.Column(db.DateTime, nullable=True)
     expires_at = db.Column(db.DateTime)
     
     # Foreign keys
@@ -296,7 +425,7 @@ class MLDataManager:
             # Update ML-derived fields
             profile.predicted_category = prediction_result['category']
             profile.confidence_level = prediction_result['confidence_level']
-            profile.last_prediction_update = datetime.utcnow()
+            profile.last_prediction_update = datetime.now(timezone.utc)
             profile.learner_profile_json = json.dumps(prediction_result['learner_profile'])
             
             # Update counters
@@ -319,3 +448,50 @@ class MLDataManager:
         except Exception as e:
             db.session.rollback()
             raise e
+
+# ===================== AI CHAT MODELS =====================
+
+class ChatSession(db.Model):
+    __tablename__ = 'chat_sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    started_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    ended_at = db.Column(db.DateTime)
+    topic_focus = db.Column(db.String(100))  # Subject the chat focused on
+    
+    # Relationships
+    student = db.relationship('Student', backref='chat_sessions')
+    messages = db.relationship('ChatMessage', backref='chat_session', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<ChatSession {self.id} - Student {self.student_id}>'
+
+class ChatMessage(db.Model):
+    __tablename__ = 'chat_messages'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('chat_sessions.id'), nullable=False)
+    sender = db.Column(db.String(20), nullable=False)  # 'student' or 'ai'
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # AI-specific fields
+    confidence_score = db.Column(db.Float)  # AI confidence in response (0-1)
+    response_time_ms = db.Column(db.Integer)  # Time taken to generate response
+    
+    def __repr__(self):
+        return f'<ChatMessage {self.id} - {self.sender}: {self.message[:50]}>'
+
+class Teacher(db.Model):
+    __tablename__ = 'teachers'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    subject_specialization = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    def __repr__(self):
+        return f'<Teacher {self.name}>'

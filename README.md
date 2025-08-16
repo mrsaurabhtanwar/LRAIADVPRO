@@ -1,6 +1,18 @@
 # 🎓 Educational Platform with AI-Powered Learning Analytics
 
-A comprehensive Flask-based educational platform that uses Machine Learning to provide personalized learning experiences for students.
+A comprehensive Flask-based edu6. **Ini7. **Start the application**
+   ```bash
+   python app.py
+   ```
+
+8. **Optional: Start background worker for large files**
+   ```bash
+   # In a new terminal window (for processing large PDFs/documents)
+   python start_celery_worker.py
+   ```ize the database**
+   ```bash
+   python populate_test_data.py
+   ```platform that uses Machine Learning and AI to provide personalized learning experiences for students and intelligent quiz generation for educators.
 
 ## 🌟 Features
 
@@ -17,18 +29,32 @@ A comprehensive Flask-based educational platform that uses Machine Learning to p
 - **Adaptive Recommendations** - Smart suggestions for study materials and difficulty levels
 - **Real-time Analytics** - Live performance tracking and insights
 
-### 👨‍🏫 Teacher Features (In Development)
-- Teacher dashboard (placeholder)
-- Student progress monitoring (planned)
-- Quiz creation tools (planned)
+### 🧠 AI-Powered Quiz Generation (NEW!)
+- **Multi-Source Content Processing** - Extract content from PDFs, DOCX files, web URLs, and plain text
+- **GitHub AI Integration** - Uses GitHub's FREE AI models (perfect for students!)
+- **Multiple Question Types** - Support for multiple choice, true/false, fill-in-the-blank, and short answer
+- **Smart Content Analysis** - Automatic keyword extraction and content chunking
+- **Real-time Generation Tracking** - Live progress updates during quiz creation
+- **Modern Web Interface** - Bootstrap-based responsive quiz creator and management dashboard
+- **Cost-Effective** - 15,000 free requests per month with GitHub AI models
+
+### 👨‍🏫 Teacher Features
+- **Enhanced Quiz Creation Tools** - AI-powered quiz generation from various content sources
+- **Quiz Management Dashboard** - Organize and manage all generated quizzes
+- **File Upload Support** - Drag-and-drop uploading for documents
+- **Content Processing Pipeline** - Automated extraction and analysis of educational content
+- Student progress monitoring (enhanced)
+- Background task processing for large documents
 
 ## 🛠️ Technology Stack
 
 - **Backend**: Flask 2.3.3, SQLAlchemy 3.0.5
 - **Database**: SQLite (development), PostgreSQL ready
 - **ML/AI**: scikit-learn, pandas, numpy
-- **Task Queue**: Celery + Redis
-- **Frontend**: HTML5, Bootstrap 5, JavaScript
+- **AI Content Processing**: GitHub AI Models (FREE for students!), NLTK for natural language processing
+- **Content Extraction**: PyPDF2 (PDFs), python-docx (Word docs), BeautifulSoup4 (web content)
+- **Task Queue**: Celery + Redis (background processing)
+- **Frontend**: HTML5, Bootstrap 5, JavaScript (with real-time updates)
 - **Authentication**: Werkzeug security
 
 ## 🚀 Quick Start
@@ -69,11 +95,17 @@ A comprehensive Flask-based educational platform that uses Machine Learning to p
    
    # Edit .env with your configurations
    SECRET_KEY=your-secret-key-here
-   OPENAI_API_KEY=your-openai-api-key  # Optional
+   GITHUB_TOKEN=your-github-personal-access-token  # FREE for students!
    REDIS_URL=redis://localhost:6379/0
    ```
 
-5. **Initialize the database**
+5. **Run the setup script**
+   ```bash
+   python setup.py
+   ```
+   This will test all dependencies and download required NLTK data.
+
+6. **Initialize the database**
    ```bash
    python populate_test_data.py
    ```
@@ -106,20 +138,32 @@ The platform implements a sophisticated ML pipeline with 15 key features:
 
 ```
 educational-platform/
-├── app.py                 # Main Flask application
-├── models.py              # Database models
-├── extensions.py          # Shared app extensions
-├── ml_predictor.py        # ML prediction engine
-├── requirements.txt       # Python dependencies
-├── templates/             # HTML templates
+├── app.py                     # Main Flask application
+├── models.py                  # Database models
+├── extensions.py              # Shared app extensions
+├── ml_predictor.py            # ML prediction engine
+├── content_processor.py       # AI-powered content processing (NEW!)
+├── quiz_generator.py          # Quiz generation service (NEW!)
+├── enhanced_quiz_routes.py    # Quiz generation API endpoints (NEW!)
+├── celery_tasks.py            # Background task processing (NEW!)
+├── start_celery_worker.py     # Celery worker launcher (NEW!)
+├── chat_and_teacher_routes.py # Teacher and chat features
+├── quiz_routes.py             # Original quiz system
+├── requirements.txt           # Python dependencies
+├── setup.py                   # System setup and testing script (NEW!)
+├── test_github_ai.py          # GitHub AI integration test (NEW!)
+├── templates/                 # HTML templates
 │   ├── base.html
 │   ├── login.html
 │   ├── dashboard.html
 │   ├── quiz_question.html
+│   ├── create_quiz.html       # AI quiz creation interface (NEW!)
+│   ├── manage_quizzes.html    # Quiz management dashboard (NEW!)
 │   └── ...
-├── static/               # CSS, JS, images
-├── instance/             # Database files (local)
-└── populate_test_data.py # Database seeding script
+├── static/                    # CSS, JS, images
+├── uploads/                   # File upload directory (NEW!)
+├── instance/                  # Database files (local)
+└── populate_test_data.py      # Database seeding script
 ```
 
 ## 🧪 Testing

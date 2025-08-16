@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Create Quiz{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">🎯 Create New Quiz</h4>
+                </div>
+                <div class="card-body">
+                    <form id="quizForm">
+                        <!-- Basic Quiz Information -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="title" class="form-label">Quiz Title *</label>
+                                <input type="text" class="form-control" id="title" name="title" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="topic" class="form-label">Topic *</label>
+                                <input type="text" class="form-control" id="topic" name="topic" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" placeholder="Optional description of the quiz"></textarea>
+                        </div>
+
+                        <!-- Quiz Configuration -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="difficulty" class="form-label">Difficulty *</label>
+                                <select class="form-select" id="difficulty" name="difficulty" required>
+                                    <option value="">Select difficulty</option>
+                                    <option value="easy">🟢 Easy</option>
+                                    <option value="medium">🟡 Medium</option>
+                                    <option value="hard">🔴 Hard</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="num_questions" class="form-label">Number of Questions *</label>
+                                <input type="number" class="form-control" id="num_questions" name="num_questions" min="1" max="50" value="10" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="time_limit" class="form-label">Time Limit (minutes)</label>
+                                <input type="number" class="form-control" id="time_limit" name="time_limit" min="1" max="180" placeholder="Optional">
+                            </div>
+                        </div>
+
+                        <!-- Content Source -->
+                        <div class="mb-3">
+                            <label class="form-label">Content Source *</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="radio" class="btn-check" name="content_source_type" id="source_text" value="plain_text" autocomplete="off">
+                                    <label class="btn btn-outline-primary w-100" for="source_text">
+                                        📝 Text Content
+                                    </label>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="radio" class="btn-check" name="content_source_type" id="source_url" value="url" autocomplete="off">
+                                    <label class="btn btn-outline-primary w-100" for="source_url">
+                                        🌐 URL/Website
+                                    </label>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="radio" class="btn-check" name="content_source_type" id="source_file" value="uploaded_file" autocomplete="off">
+                                    <label class="btn btn-outline-primary w-100" for="source_file">
+                                        📄 Upload File
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content Input Areas -->
+                        <div id="content_text_area" class="mb-3" style="display: none;">
+                            <label for="content_text" class="form-label">Text Content</label>
+                            <textarea class="form-control" id="content_text" name="content_text" rows="8" placeholder="Paste your content here..."></textarea>
+                            <div class="form-text">Enter the text content you want to generate quiz questions from.</div>
+                        </div>
+
+                        <div id="content_url_area" class="mb-3" style="display: none;">
+                            <label for="content_url" class="form-label">Website URL</label>
+                            <input type="url" class="form-control" id="content_url" name="content_url" placeholder="https://example.com/article">
+                            <div class="form-text">Enter a URL to extract content from. Make sure the website allows content extraction.</div>
+                        </div>
+
+                        <div id="content_file_area" class="mb-3" style="display: none;">
+                            <label for="content_file" class="form-label">Upload File</label>
+                            <input type="file" class="form-control" id="content_file" name="content_file" accept=".txt,.pdf,.docx,.doc">
+                            <div class="form-text">Supported formats: TXT, PDF, DOCX, DOC (max 16MB)</div>
+                            <div id="file_upload_status" class="mt-2"></div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="generateBtn">
+                                <span id="generateBtnText">🚀 Generate Quiz</span>
+                                <span id="generateBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Generation Status -->
+                    <div id="generationStatus" class="mt-4" style="display: none;">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6>Generation Status</h6>
+                                <div class="progress mb-2">
+                                    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div id="statusMessage">Starting...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Content source type handling
+document.querySelectorAll('input[name="content_source_type"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        // Hide all content areas
+        document.getElementById('content_text_area').style.display = 'none';
+        document.getElementById('content_url_area').style.display = 'none';
+        document.getElementById('content_file_area').style.display = 'none';
+        
+        // Show selected content area
+        if (this.value === 'plain_text') {
+            document.getElementById('content_text_area').style.display = 'block';
+        } else if (this.value === 'url') {
+            document.getElementById('content_url_area').style.display = 'block';
+        } else if (this.value === 'uploaded_file') {
+            document.getElementById('content_file_area').style.display = 'block';
+        }
+    });
+});
+
+// File upload handling
+let uploadedFilePath = null;
+
+document.getElementById('content_file').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    
+    const statusDiv = document.getElementById('file_upload_status');
+    statusDiv.innerHTML = '<div class="text-info">Uploading file...</div>';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    fetch('/api/quiz/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            uploadedFilePath = data.file_path;
+            statusDiv.innerHTML = `<div class="text-success">✅ File uploaded: ${data.filename}</div>`;
+        } else {
+            statusDiv.innerHTML = `<div class="text-danger">❌ Upload failed: ${data.error}</div>`;
+            uploadedFilePath = null;
+        }
+    })
+    .catch(error => {
+        statusDiv.innerHTML = `<div class="text-danger">❌ Upload error: ${error.message}</div>`;
+        uploadedFilePath = null;
+    });
+});
+
+// Form submission
+document.getElementById('quizForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validate content source
+    const sourceType = document.querySelector('input[name="content_source_type"]:checked');
+    if (!sourceType) {
+        alert('Please select a content source type');
+        return;
+    }
+    
+    // Prepare form data
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Handle file upload
+    if (sourceType.value === 'uploaded_file') {
+        if (!uploadedFilePath) {
+            alert('Please upload a file first');
+            return;
+        }
+        data.file_path = uploadedFilePath;
+    }
+    
+    // Update UI
+    const generateBtn = document.getElementById('generateBtn');
+    const generateBtnText = document.getElementById('generateBtnText');
+    const generateBtnSpinner = document.getElementById('generateBtnSpinner');
+    const statusDiv = document.getElementById('generationStatus');
+    
+    generateBtn.disabled = true;
+    generateBtnText.textContent = 'Generating...';
+    generateBtnSpinner.classList.remove('d-none');
+    statusDiv.style.display = 'block';
+    
+    // Submit quiz generation request
+    fetch('/api/quiz/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Start polling for status
+            pollGenerationStatus(result.task_id);
+        } else {
+            throw new Error(result.error || 'Generation failed');
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error.message);
+        resetGenerationUI();
+    });
+});
+
+function pollGenerationStatus(taskId) {
+    const statusMessage = document.getElementById('statusMessage');
+    const progressBar = document.getElementById('progressBar');
+    
+    const poll = () => {
+        fetch(`/api/quiz/status/${taskId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            const progress = Math.round((data.progress || 0) * 100);
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = progress + '%';
+            
+            if (data.status === 'completed') {
+                statusMessage.innerHTML = `
+                    <div class="text-success">
+                        ✅ Quiz generated successfully! 
+                        <a href="/api/quiz/${data.result.quiz_id}" class="btn btn-sm btn-success ms-2">View Quiz</a>
+                    </div>
+                `;
+                resetGenerationUI();
+            } else if (data.status === 'failed') {
+                throw new Error(data.error || 'Generation failed');
+            } else {
+                statusMessage.textContent = `Status: ${data.status}`;
+                setTimeout(poll, 2000); // Poll every 2 seconds
+            }
+        })
+        .catch(error => {
+            statusMessage.innerHTML = `<div class="text-danger">❌ Error: ${error.message}</div>`;
+            resetGenerationUI();
+        });
+    };
+    
+    poll();
+}
+
+function resetGenerationUI() {
+    const generateBtn = document.getElementById('generateBtn');
+    const generateBtnText = document.getElementById('generateBtnText');
+    const generateBtnSpinner = document.getElementById('generateBtnSpinner');
+    
+    generateBtn.disabled = false;
+    generateBtnText.textContent = '🚀 Generate Quiz';
+    generateBtnSpinner.classList.add('d-none');
+}
+</script>
+{% endblock %}
