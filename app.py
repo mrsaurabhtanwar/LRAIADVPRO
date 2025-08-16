@@ -6,7 +6,6 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 

@@ -4,29 +4,36 @@
 # Exit on error
 set -o errexit
 
-echo "Starting build process..."
+echo "🚀 Starting build process..."
 
-# Upgrade pip and install build tools
-echo "Upgrading pip and installing build tools..."
+# Upgrade pip to latest version
+echo "📦 Upgrading pip..."
 python -m pip install --upgrade pip
-python -m pip install wheel setuptools
 
 # Install Python dependencies
-echo "Installing Python dependencies..."
+echo "📦 Installing dependencies..."
 pip install -r requirements.txt
 
 # Initialize database
-echo "Initializing database..."
+echo "🗄️  Initializing database..."
 python -c "
+import os
 import sys
-sys.path.append('.')
+
+# Add current directory to Python path
+sys.path.insert(0, os.getcwd())
+
 try:
     from app import app, db
     with app.app_context():
         db.create_all()
-        print('✅ Database initialized successfully')
+        print('✅ Database tables created successfully')
+except ImportError as e:
+    print(f'❌ Import error: {e}')
+    print('📝 Available files:', os.listdir('.'))
+    sys.exit(1)
 except Exception as e:
-    print(f'❌ Database initialization failed: {e}')
+    print(f'❌ Database initialization error: {e}')
     sys.exit(1)
 "
 
