@@ -5,11 +5,11 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-change-this-in-production'
     
     # Database configuration for production (PostgreSQL on Render)
-    DATABASE_URL = os.environ.get('DATABASE_URL')
-    if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url and database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL or 'sqlite:///educational_platform.db'
+    SQLALCHEMY_DATABASE_URI = database_url or 'sqlite:///educational_platform.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # OpenAI API Key
