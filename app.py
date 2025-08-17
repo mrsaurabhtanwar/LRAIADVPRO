@@ -838,7 +838,7 @@ if __name__ == '__main__':
     print("🌐 Chatbot API: https://rag-tutor-chatbot.onrender.com/")
     print("🚀 Access your app at: http://127.0.0.1:5001")
     
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=8000)
 else:
     # This runs when deployed (via gunicorn)
     with app.app_context():
