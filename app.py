@@ -2,7 +2,7 @@
 import logging
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -45,6 +45,15 @@ def chr_filter(number, offset=64):
     """Convert number to letter (1->A, 2->B, etc.)"""
     return chr(number + offset)
 
+@app.template_filter('from_json')
+def from_json_filter(value):
+    """Convert JSON string to Python object"""
+    import json
+    return json.loads(value)
+
+# Add built-in 'abs' function to Jinja2 environment
+app.jinja_env.globals['abs'] = abs
+
 # ===================== SECURITY DECORATORS =====================
 
 def login_required(f):
@@ -71,6 +80,207 @@ def internal_error(error):
 @app.errorhandler(403)
 def forbidden_error(error):
     return render_template('errors/403.html'), 403
+
+# ===================== ML API INTEGRATION FUNCTIONS =====================
+
+def call_ml_api_for_prediction(attempt, student_id):
+    """Call the ML API to get student performance prediction"""
+    try:
+        # Prepare data for ML API based on quiz attempt
+        responses = json.loads(attempt.responses_json or '{}')
+        
+        # Calculate quiz metrics
+        hint_count = session.get('hints_used', 0)
+        bottom_hint = 1 if hint_count > 0 else 0
+        attempt_count = len(responses)  # Number of questions answered
+        
+        # Calculate timing metrics
+        timing_data = json.loads(attempt.timing_data_json or '{}') if hasattr(attempt, 'timing_data_json') else {}
+        ms_first_response = timing_data.get('first_response_time', 5000)  # Default 5 seconds
+        duration = timing_data.get('total_duration', 300000)  # Default 5 minutes
+        
+        # Mock confidence levels (you can replace with real data)
+        avg_conf_frustrated = 0.2
+        avg_conf_confused = 0.3  
+        avg_conf_concentrating = 0.7
+        avg_conf_bored = 0.1
+        
+        # Prepare API payload
+        api_data = {
+            "hint_count": float(hint_count),
+            "bottom_hint": float(bottom_hint),
+            "attempt_count": float(attempt_count),
+            "ms_first_response": float(ms_first_response),
+            "duration": float(duration),
+            "avg_conf_frustrated": avg_conf_frustrated,
+            "avg_conf_confused": avg_conf_confused,
+            "avg_conf_concentrating": avg_conf_concentrating,
+            "avg_conf_bored": avg_conf_bored
+        }
+        
+        # Call ML API
+        ml_api_url = "https://ml-api-pz1u.onrender.com/predict"
+        response = requests.post(
+            ml_api_url,
+            json=api_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            prediction_data = response.json()
+            app.logger.info(f"ML API prediction successful for student {student_id}")
+            return prediction_data
+        else:
+            app.logger.error(f"ML API returned status {response.status_code}: {response.text}")
+            return None
+            
+    except requests.exceptions.Timeout:
+        app.logger.error("ML API request timed out")
+        return None
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"ML API request failed: {e}")
+        return None
+    except Exception as e:
+        app.logger.error(f"Error calling ML API: {e}")
+        return None
+
+def store_ml_prediction(student_id, attempt_id, prediction_data):
+    """Store ML prediction data in the database"""
+    try:
+        from models import MLPrediction
+        
+        prediction = MLPrediction(
+            student_id=student_id,
+            quiz_attempt_id=attempt_id,
+            predicted_score=prediction_data['prediction']['correctness_score'],
+            category=prediction_data['prediction']['performance_category'],
+            confidence_level=prediction_data.get('confidence_level', 0.8),
+            learner_profile_json=json.dumps(prediction_data.get('learner_profile', {})),
+            features_json=json.dumps(prediction_data.get('behaviors', {})),
+            model_version="v1.0",
+            created_at=datetime.utcnow()
+        )
+        
+        db.session.add(prediction)
+        db.session.commit()
+        
+        app.logger.info(f"ML prediction stored for student {student_id}")
+        
+    except Exception as e:
+        app.logger.error(f"Error storing ML prediction: {e}")
+        db.session.rollback()
+
+def update_student_profile_with_ml_data(student_id, prediction_data):
+    """Update student profile with ML insights"""
+    try:
+        from models import StudentProfile
+        
+        profile = StudentProfile.query.filter_by(student_id=student_id).first()
+        if not profile:
+            profile = StudentProfile(student_id=student_id)
+            db.session.add(profile)
+        
+        # Update profile with ML insights
+        prediction = prediction_data.get('prediction', {})
+        behaviors = prediction_data.get('behaviors', {})
+        
+        profile.predicted_category = prediction.get('performance_category', 'General Learner')
+        profile.confidence_level = prediction.get('correctness_score', 0.5)
+        profile.last_prediction_update = datetime.utcnow()
+        profile.learner_profile_json = json.dumps(prediction_data)
+        
+        # Update learning style based on behaviors
+        if behaviors.get('engagement') == 'High' and behaviors.get('efficiency') == 'High':
+            profile.learning_style = 'Active Learner'
+        elif behaviors.get('hint_dependency') == 'High':
+            profile.learning_style = 'Guided Learner'
+        elif behaviors.get('persistence') == 'High':
+            profile.learning_style = 'Persistent Learner'
+        else:
+            profile.learning_style = 'Adaptive Learner'
+        
+        # Generate recommendations based on ML insights
+        generate_ml_based_recommendations(student_id, prediction_data)
+        
+        db.session.commit()
+        app.logger.info(f"Student profile updated with ML data for student {student_id}")
+        
+    except Exception as e:
+        app.logger.error(f"Error updating student profile: {e}")
+        db.session.rollback()
+
+def generate_ml_based_recommendations(student_id, prediction_data):
+    """Generate recommendations based on ML analysis"""
+    try:
+        from models import StudentRecommendation
+        
+        prediction = prediction_data.get('prediction', {})
+        behaviors = prediction_data.get('behaviors', {})
+        recommendations_data = prediction_data.get('recommendations', {})
+        
+        # Create recommendation based on performance category
+        category = prediction.get('performance_category', 'Average')
+        
+        if category == 'Poor':
+            recommendation = StudentRecommendation(
+                student_id=student_id,
+                recommendation_type='intervention',
+                title='Immediate Learning Support Needed',
+                description=recommendations_data.get('feedback_message', 'Focus on building foundational concepts'),
+                priority=1,
+                settings_json=json.dumps({
+                    'learning_material': recommendations_data.get('learning_material', ''),
+                    'ml_category': category,
+                    'confidence_score': prediction.get('correctness_score', 0)
+                }),
+                created_at=datetime.utcnow(),
+                expires_at=datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=30)
+            )
+        elif category == 'Weak':
+            recommendation = StudentRecommendation(
+                student_id=student_id,
+                recommendation_type='practice',
+                title='Additional Practice Recommended',
+                description=recommendations_data.get('feedback_message', 'Work on strengthening your understanding'),
+                priority=2,
+                settings_json=json.dumps({
+                    'learning_material': recommendations_data.get('learning_material', ''),
+                    'ml_category': category
+                }),
+                created_at=datetime.utcnow(),
+                expires_at=datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=21)
+            )
+        elif category in ['Strong', 'Outstanding']:
+            recommendation = StudentRecommendation(
+                student_id=student_id,
+                recommendation_type='advancement',
+                title='Ready for Advanced Challenges',
+                description=recommendations_data.get('feedback_message', 'Explore advanced topics and challenges'),
+                priority=3,
+                settings_json=json.dumps({
+                    'learning_material': recommendations_data.get('learning_material', ''),
+                    'ml_category': category
+                }),
+                created_at=datetime.utcnow(),
+                expires_at=datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=14)
+            )
+        
+        # Deactivate old recommendations of the same type
+        if 'recommendation' in locals():
+            old_recs = StudentRecommendation.query.filter_by(
+                student_id=student_id,
+                recommendation_type=recommendation.recommendation_type,
+                is_active=True
+            ).all()
+            
+            for old_rec in old_recs:
+                old_rec.is_active = False
+                
+            db.session.add(recommendation)
+            
+    except Exception as e:
+        app.logger.error(f"Error generating ML-based recommendations: {e}")
 
 # ===================== MAIN ROUTES =====================
 
@@ -344,6 +554,15 @@ def complete_quiz():
     
     # Store detailed analysis for results page
     attempt.detailed_analysis_json = json.dumps(detailed_analysis)
+    
+    # Call ML API for student performance analysis
+    ml_prediction = call_ml_api_for_prediction(attempt, session['user_id'])
+    if ml_prediction:
+        # Store ML prediction in database
+        store_ml_prediction(session['user_id'], attempt_id, ml_prediction)
+        
+        # Update student profile with ML insights
+        update_student_profile_with_ml_data(session['user_id'], ml_prediction)
     
     db.session.commit()
     session.pop('current_attempt', None)
@@ -799,11 +1018,139 @@ def view_progress():
     total_quizzes = len(attempts)
     average_score = sum(attempt.score for attempt in attempts if attempt.score) / total_quizzes if total_quizzes > 0 else 0
     
+    # Calculate progress trend
+    progress_trend = 0
+    if len(attempts) >= 2:
+        recent_scores = [attempt.score for attempt in attempts[:3] if attempt.score]
+        older_scores = [attempt.score for attempt in attempts[3:6] if attempt.score]
+        if recent_scores and older_scores:
+            recent_avg = sum(recent_scores) / len(recent_scores)
+            older_avg = sum(older_scores) / len(older_scores)
+            progress_trend = recent_avg - older_avg
+    
+    # Get current recommendations
+    current_recommendations = []
+    if attempts:
+        latest_score = attempts[0].score if attempts[0].score else 0
+        if latest_score < 60:
+            current_recommendations = [
+                "Review fundamental concepts before attempting new quizzes",
+                "Practice with easier questions to build confidence",
+                "Use the chat feature to get help with difficult topics"
+            ]
+        elif latest_score < 80:
+            current_recommendations = [
+                "Focus on areas where you scored lowest",
+                "Try more challenging quizzes to improve further",
+                "Review incorrect answers to understand mistakes"
+            ]
+        else:
+            current_recommendations = [
+                "Excellent work! Try advanced level quizzes",
+                "Help other students to reinforce your knowledge",
+                "Explore new subject areas to expand learning"
+            ]
+    else:
+        current_recommendations = [
+            "Start with a beginner-level quiz to establish your baseline",
+            "Take quizzes regularly to track your progress",
+            "Use the chat feature if you need help with any topics"
+        ]
+
     return render_template('progress.html',
                          student=student,
                          attempts=attempts,
                          total_quizzes=total_quizzes,
-                         average_score=average_score)
+                         average_score=average_score,
+                         progress_trend=progress_trend,
+                         current_recommendations=current_recommendations)
+
+@app.route('/student_profile')
+@login_required  
+def student_profile():
+    """Comprehensive student profile with ML insights"""
+    student_id = session['user_id']
+    student = db.session.get(Student, student_id)
+    
+    # Get student profile or create if doesn't exist
+    from models import StudentProfile, MLPrediction
+    profile = StudentProfile.query.filter_by(student_id=student_id).first()
+    if not profile:
+        profile = StudentProfile(student_id=student_id)
+        db.session.add(profile)
+        db.session.commit()
+    
+    # Get recent quiz attempts for analysis
+    recent_attempts = QuizAttempt.query.filter_by(
+        student_id=student_id,
+        is_completed=True
+    ).order_by(QuizAttempt.completed_at.desc()).limit(10).all()
+    
+    # Get latest ML predictions
+    latest_predictions = MLPrediction.query.filter_by(
+        student_id=student_id
+    ).order_by(MLPrediction.created_at.desc()).limit(5).all()
+    
+    # Calculate performance trends
+    performance_data = []
+    for attempt in reversed(recent_attempts[-10:]):  # Last 10 attempts chronologically
+        performance_data.append({
+            'quiz_title': attempt.quiz.title if attempt.quiz else 'Unknown Quiz',
+            'score': attempt.score,
+            'date': attempt.completed_at.strftime('%m/%d') if attempt.completed_at else 'N/A',
+            'topic': attempt.quiz.topic if attempt.quiz else 'General'
+        })
+    
+    # Get learning recommendations
+    active_recommendations = StudentRecommendation.query.filter_by(
+        student_id=student_id,
+        is_active=True,
+        is_completed=False
+    ).order_by(StudentRecommendation.priority.asc()).limit(5).all()
+    
+    # Calculate learning statistics
+    total_quizzes = len(QuizAttempt.query.filter_by(student_id=student_id, is_completed=True).all())
+    average_score = sum(attempt.score for attempt in recent_attempts if attempt.score) / len(recent_attempts) if recent_attempts else 0
+    improvement_rate = calculate_improvement_rate(recent_attempts)
+    
+    # Get learner profile from latest prediction
+    learner_profile_data = None
+    behavioral_insights = None
+    if latest_predictions:
+        try:
+            latest_pred = latest_predictions[0]
+            if hasattr(latest_pred, 'learner_profile_json') and latest_pred.learner_profile_json:
+                learner_profile_data = json.loads(latest_pred.learner_profile_json)
+                
+            if hasattr(latest_pred, 'features_json') and latest_pred.features_json:
+                behavioral_insights = json.loads(latest_pred.features_json)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    
+    return render_template('student_profile.html',
+                         student=student,
+                         profile=profile,
+                         recent_attempts=recent_attempts,
+                         latest_predictions=latest_predictions,
+                         performance_data=performance_data,
+                         active_recommendations=active_recommendations,
+                         total_quizzes=total_quizzes,
+                         average_score=average_score,
+                         improvement_rate=improvement_rate,
+                         learner_profile_data=learner_profile_data,
+                         behavioral_insights=behavioral_insights)
+
+def calculate_improvement_rate(attempts):
+    """Calculate improvement rate based on recent attempts"""
+    if len(attempts) < 3:
+        return 0
+    
+    # Compare first half vs second half of recent attempts
+    mid_point = len(attempts) // 2
+    first_half_avg = sum(a.score for a in attempts[mid_point:] if a.score) / (len(attempts) - mid_point)
+    second_half_avg = sum(a.score for a in attempts[:mid_point] if a.score) / mid_point
+    
+    return ((first_half_avg - second_half_avg) / second_half_avg) * 100 if second_half_avg > 0 else 0
 
 # ===================== API ROUTES =====================
 
@@ -829,6 +1176,24 @@ def api_quiz_preview(quiz_id):
         app.logger.error(f"Error in quiz preview: {e}")
         return jsonify({'success': False, 'message': 'Internal server error'})
 
+# Health check endpoint for deployment monitoring
+@app.route('/health')
+def health_check():
+    """Simple health check endpoint for deployment monitoring"""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+        db_status = "healthy"
+    except Exception:
+        db_status = "unhealthy"
+    
+    return jsonify({
+        'status': 'healthy',
+        'database': db_status,
+        'app': 'Educational Platform',
+        'timestamp': datetime.now().isoformat()
+    })
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
@@ -838,7 +1203,7 @@ if __name__ == '__main__':
     print("🌐 Chatbot API: https://rag-tutor-chatbot.onrender.com/")
     print("🚀 Access your app at: http://127.0.0.1:5001")
     
-    app.run(debug=True, port=8000)
+    app.run(debug=True, port=5001)
 else:
     # This runs when deployed (via gunicorn)
     with app.app_context():

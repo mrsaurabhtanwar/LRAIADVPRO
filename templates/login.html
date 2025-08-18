@@ -3,50 +3,212 @@
 {% block title %}Student Login - Educational Platform{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">
-                    <i class="fas fa-sign-in-alt"></i> Student Login
-                </h4>
-            </div>
-            <div class="card-body">
-                {% with messages = get_flashed_messages() %}
-                    {% if messages %}
-                        <div class="alert alert-danger">
-                            {% for message in messages %}
-                                {{ message }}
-                            {% endfor %}
+<!-- Login Page with Enhanced UI -->
+<div class="min-vh-100 d-flex align-items-center py-5" style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-5 col-lg-4">
+                <!-- Login Card -->
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-5">
+                        <!-- Logo/Brand -->
+                        <div class="text-center mb-4">
+                            <div class="login-logo mb-3">
+                                <i class="fas fa-graduation-cap fa-3x text-primary"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-2">Welcome Back</h3>
+                            <p class="text-muted">Sign in to continue your learning journey</p>
                         </div>
-                    {% endif %}
-                {% endwith %}
 
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                        <div class="form-text">Enter your registered email address</div>
+                        <!-- Login Form -->
+                        <form method="POST" class="login-form">
+                            <div class="form-floating mb-3">
+                                <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
+                                <label for="email">
+                                    <i class="fas fa-envelope me-2"></i>Email Address
+                                </label>
+                            </div>
+                            
+                            <div class="form-floating mb-4">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                <label for="password">
+                                    <i class="fas fa-lock me-2"></i>Password
+                                </label>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="rememberMe">
+                                    <label class="form-check-label text-sm" for="rememberMe">
+                                        Remember me
+                                    </label>
+                                </div>
+                                <a href="#" class="text-decoration-none text-sm">Forgot password?</a>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 btn-lg mb-3" id="loginBtn">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                            </button>
+                        </form>
+
+                        <!-- Divider -->
+                        <div class="text-center mb-4">
+                            <hr class="my-3">
+                            <span class="text-muted small bg-white px-3">New to EduPlatform?</span>
+                        </div>
+
+                        <!-- Register Link -->
+                        <div class="text-center">
+                            <a href="{{ url_for('register') }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-user-plus me-2"></i>Create Account
+                            </a>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
-                    </div>
-                </form>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="text-center mt-4">
+                    <p class="text-muted small">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Your data is protected with enterprise-grade security
+                    </p>
+                </div>
             </div>
-            <div class="card-footer text-center">
-                <small class="text-muted">
-                    Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
-                </small>
+
+            <!-- Features Column (Hidden on mobile) -->
+            <div class="col-lg-7 d-none d-lg-block">
+                <div class="ps-5">
+                    <h1 class="display-4 fw-bold text-dark mb-4">
+                        Unlock Your Learning Potential
+                    </h1>
+                    <p class="lead text-muted mb-5">
+                        Experience personalized education with AI-powered quizzes, instant tutoring, and comprehensive progress tracking.
+                    </p>
+                    
+                    <!-- Feature List -->
+                    <div class="row g-4">
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-brain fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">AI-Powered Learning</h6>
+                                    <p class="text-muted small">Adaptive quizzes that adjust to your skill level</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-chart-line fa-2x text-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Progress Tracking</h6>
+                                    <p class="text-muted small">Detailed analytics and performance insights</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-robot fa-2x text-info"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">24/7 AI Tutor</h6>
+                                    <p class="text-muted small">Get instant help whenever you need it</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-trophy fa-2x text-warning"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Achievements</h6>
+                                    <p class="text-muted small">Earn badges and track your learning milestones</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Enhanced Styles -->
+<style>
+.login-logo {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.form-floating > label {
+    color: #6b7280;
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: var(--bs-primary);
+}
+
+.feature-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+
+/* Loading state for form */
+.login-form.loading .form-control {
+    opacity: 0.7;
+    pointer-events: none;
+}
+</style>
+
+<!-- Enhanced JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.login-form');
+    const loginBtn = document.getElementById('loginBtn');
+    
+    // Form submission enhancement
+    form.addEventListener('submit', function() {
+        loginBtn.innerHTML = '<span class="loading-spinner me-2"></span>Signing in...';
+        loginBtn.disabled = true;
+        form.classList.add('loading');
+    });
+    
+    // Enhanced form validation
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    
+    [emailInput, passwordInput].forEach(input => {
+        input.addEventListener('invalid', function() {
+            this.classList.add('is-invalid');
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.validity.valid) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -3,88 +3,270 @@
 {% block title %}Dashboard - Educational Platform{% endblock %}
 
 {% block content %}
-<div class="row">
+<!-- Hero Section -->
+<div class="row mb-5">
     <div class="col-12">
-        <h2>Welcome, {{ student.name }}!</h2>
-        <p class="text-muted">Choose an activity to continue your learning journey.</p>
+        <div class="bg-gradient-primary text-white rounded-4 p-5 position-relative overflow-hidden">
+            <div class="position-relative z-index-2">
+                <h1 class="display-4 fw-bold mb-3">
+                    <i class="fas fa-wave-hand me-3"></i>
+                    Welcome back, {{ student.name }}!
+                </h1>
+                <p class="lead mb-0 opacity-90">
+                    Ready to continue your learning journey? Let's make today count!
+                </p>
+            </div>
+            <div class="position-absolute top-0 end-0 w-50 h-100 opacity-10">
+                <i class="fas fa-graduation-cap" style="font-size: 15rem; margin-top: -2rem; margin-right: -3rem;"></i>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="row g-4">
+<!-- Quick Stats -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="stats-card text-center">
+            <div class="stats-value">{{ total_quizzes or 0 }}</div>
+            <div class="stats-label">Quizzes Completed</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card text-center" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stats-value">{{ "%.0f"|format(average_score or 0) }}%</div>
+            <div class="stats-label">Average Score</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card text-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <div class="stats-value">{{ study_streak or 0 }}</div>
+            <div class="stats-label">Day Streak</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card text-center" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <div class="stats-value">{{ skill_level or "Beginner" }}</div>
+            <div class="stats-label">Skill Level</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Action Cards -->
+<div class="row g-4 mb-5">
     <!-- Take Quiz Card -->
-    <div class="col-md-4">
-        <div class="card h-100 border-primary">
-            <div class="card-body text-center">
-                <i class="fas fa-question-circle fa-4x text-primary mb-3"></i>
-                <h5 class="card-title">Take Quiz</h5>
-                <p class="card-text">Test your knowledge with adaptive quizzes that adjust to your learning level.</p>
-                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">Start Quiz</a>
+    <div class="col-lg-4">
+        <div class="card h-100 card-hover">
+            <div class="card-body text-center p-4">
+                <div class="icon-circle bg-primary-soft mb-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border-radius: 50%; background: rgba(59, 130, 246, 0.1);">
+                    <i class="fas fa-question-circle fa-2x text-primary"></i>
+                </div>
+                <h5 class="card-title fw-bold mb-3">Take Quiz</h5>
+                <p class="card-text text-muted mb-4">
+                    Test your knowledge with adaptive quizzes that adjust to your learning level and provide instant feedback.
+                </p>
+                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-play me-2"></i>Start Quiz
+                </a>
             </div>
         </div>
     </div>
 
     <!-- AI Tutor Card -->
-    <div class="col-md-4">
-        <div class="card h-100 border-success">
-            <div class="card-body text-center">
-                <i class="fas fa-robot fa-4x text-success mb-3"></i>
-                <h5 class="card-title">AI Tutor</h5>
-                <p class="card-text">Get instant help and explanations from our AI-powered tutor.</p>
-                <a href="{{ url_for('chat_interface') }}" class="btn btn-success">Start Chat</a>
+    <div class="col-lg-4">
+        <div class="card h-100 card-hover">
+            <div class="card-body text-center p-4">
+                <div class="icon-circle bg-success-soft mb-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border-radius: 50%; background: rgba(16, 185, 129, 0.1);">
+                    <i class="fas fa-robot fa-2x text-success"></i>
+                </div>
+                <h5 class="card-title fw-bold mb-3">AI Tutor</h5>
+                <p class="card-text text-muted mb-4">
+                    Get instant help and detailed explanations from our AI-powered tutor available 24/7.
+                </p>
+                <a href="{{ url_for('chat_interface') }}" class="btn btn-success btn-lg w-100">
+                    <i class="fas fa-comments me-2"></i>Start Chat
+                </a>
             </div>
         </div>
     </div>
 
     <!-- Progress Card -->
-    <div class="col-md-4">
-        <div class="card h-100 border-info">
-            <div class="card-body text-center">
-                <i class="fas fa-chart-line fa-4x text-info mb-3"></i>
-                <h5 class="card-title">View Progress</h5>
-                <p class="card-text">Track your learning progress and get personalized recommendations.</p>
-                <a href="{{ url_for('view_progress') }}" class="btn btn-info">View Progress</a>
+    <div class="col-lg-4">
+        <div class="card h-100 card-hover">
+            <div class="card-body text-center p-4">
+                <div class="icon-circle bg-info-soft mb-3 mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; border-radius: 50%; background: rgba(6, 182, 212, 0.1);">
+                    <i class="fas fa-chart-line fa-2x text-info"></i>
+                </div>
+                <h5 class="card-title fw-bold mb-3">View Progress</h5>
+                <p class="card-text text-muted mb-4">
+                    Track your learning progress and discover personalized recommendations for improvement.
+                </p>
+                <a href="{{ url_for('view_progress') }}" class="btn btn-info btn-lg w-100">
+                    <i class="fas fa-analytics me-2"></i>View Progress
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Access Features -->
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0 fw-bold">
+                    <i class="fas fa-bolt me-2 text-warning"></i>Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-3">
+                    <a href="{{ url_for('generate_quiz') }}" class="btn btn-outline-primary text-start">
+                        <i class="fas fa-magic me-3"></i>Generate Custom Quiz
+                    </a>
+                    <a href="{{ url_for('student_profile') }}" class="btn btn-outline-secondary text-start">
+                        <i class="fas fa-user-circle me-3"></i>View AI Profile Analysis
+                    </a>
+                    <a href="{{ url_for('quiz_selection') }}?difficulty=hard" class="btn btn-outline-warning text-start">
+                        <i class="fas fa-fire me-3"></i>Challenge Mode
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0 fw-bold">
+                    <i class="fas fa-lightbulb me-2 text-info"></i>Learning Tip
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info border-0 bg-info-subtle">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Pro Tip:</strong> Take quizzes regularly to improve retention. Our AI tracks your progress and adapts questions to your learning style!
+                </div>
+                <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    Best learning times: Morning sessions show 23% better retention rates
+                </small>
             </div>
         </div>
     </div>
 </div>
 
 {% if recent_quizzes %}
-<div class="row mt-5">
+<!-- Recent Activity -->
+<div class="row">
     <div class="col-12">
-        <h4>Recent Quiz Results</h4>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Quiz</th>
-                        <th>Score</th>
-                        <th>Performance</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for attempt in recent_quizzes %}
-                    <tr>
-                        <td>{{ attempt.quiz.title }}</td>
-                        <td>
-                            <span class="badge bg-{{ 'success' if attempt.score >= 80 else 'warning' if attempt.score >= 60 else 'danger' }}">
-                                {{ attempt.score }}%
-                            </span>
-                        </td>
-                        <td>
-                            {% if attempt.predicted_performance %}
-                                <span class="badge bg-secondary">{{ attempt.predicted_performance.title() }}</span>
-                            {% else %}
-                                <span class="text-muted">Processing...</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ attempt.completed_at.strftime('%Y-%m-%d %H:%M') if attempt.completed_at else 'In Progress' }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold">
+                    <i class="fas fa-history me-2"></i>Recent Quiz Results
+                </h5>
+                <a href="{{ url_for('view_progress') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-chart-bar me-1"></i>View All
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0 fw-semibold">Quiz</th>
+                                <th class="border-0 fw-semibold">Score</th>
+                                <th class="border-0 fw-semibold">Performance</th>
+                                <th class="border-0 fw-semibold">Date</th>
+                                <th class="border-0 fw-semibold">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in recent_quizzes %}
+                            <tr>
+                                <td class="align-middle">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-quiz me-2 text-muted"></i>
+                                        <strong>{{ attempt.quiz.title }}</strong>
+                                    </div>
+                                </td>
+                                <td class="align-middle">
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress me-2" style="width: 60px; height: 8px;">
+                                            <div class="progress-bar bg-{{ 'success' if attempt.score >= 80 else 'warning' if attempt.score >= 60 else 'danger' }}" 
+                                                 style="width: {{ attempt.score }}%"></div>
+                                        </div>
+                                        <span class="badge bg-{{ 'success' if attempt.score >= 80 else 'warning' if attempt.score >= 60 else 'danger' }} performance-badge">
+                                            {{ attempt.score }}%
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="align-middle">
+                                    {% if attempt.predicted_performance %}
+                                        <span class="badge bg-{{ 'success' if attempt.predicted_performance == 'excellent' else 'primary' if attempt.predicted_performance == 'good' else 'warning' if attempt.predicted_performance == 'needs_improvement' else 'secondary' }}">
+                                            <i class="fas fa-{{ 'star' if attempt.predicted_performance == 'excellent' else 'thumbs-up' if attempt.predicted_performance == 'good' else 'arrow-up' }} me-1"></i>
+                                            {{ attempt.predicted_performance.replace('_', ' ').title() }}
+                                        </span>
+                                    {% else %}
+                                        <div class="d-flex align-items-center text-muted">
+                                            <span class="loading-spinner me-2"></span>
+                                            <small>Processing...</small>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle text-muted">
+                                    <small>
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ attempt.completed_at.strftime('%b %d, %Y') if attempt.completed_at else 'In Progress' }}
+                                    </small>
+                                </td>
+                                <td class="align-middle">
+                                    <a href="{{ url_for('quiz_results', attempt_id=attempt.id) }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="row">
+    <div class="col-12">
+        <div class="card text-center p-5">
+            <div class="card-body">
+                <i class="fas fa-rocket fa-4x text-muted mb-4 opacity-50"></i>
+                <h4 class="text-muted mb-3">Ready to Start Learning?</h4>
+                <p class="text-muted mb-4">Take your first quiz to begin tracking your progress and unlock personalized recommendations!</p>
+                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-play me-2"></i>Take Your First Quiz
+                </a>
+            </div>
         </div>
     </div>
 </div>
 {% endif %}
+
+<!-- Additional CSS for gradient backgrounds -->
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+}
+.bg-info-subtle {
+    background-color: rgba(6, 182, 212, 0.1) !important;
+}
+</style>
 {% endblock %}
