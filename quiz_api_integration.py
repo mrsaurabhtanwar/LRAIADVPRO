@@ -17,22 +17,29 @@ class QuizGenerationAPI:
     def __init__(self, base_url="https://rag-tutor-quiz-generator.onrender.com"):
         self.base_url = base_url
         self.endpoints = {
-            "generate_quiz": "/api/generate-quiz",
-            "generate_hint": "/api/generate-hint",
-            "health": "/api/health"
+            "generate_quiz": "/generate-quiz",  # Updated endpoint path
+            "generate_hint": "/generate-hint",  # Updated endpoint path  
+            "health": "/health"  # Updated endpoint path
         }
     
-    def generate_quiz(self, topic, difficulty="medium", num_questions=5, student_data=None):
+    def generate_quiz(self, topic, difficulty="medium", num_questions=10, student_data=None):
         """Generate a quiz using the external API"""
         try:
-            url = f"{self.base_url}/api/generate-quiz"
+            url = f"{self.base_url}/generate-quiz"
             
-            # Prepare request payload
+            # Get student behavior data
+            behavior_data = student_data or self._get_default_student_behavior()
+            
+            # Prepare request payload according to new API schema
             payload = {
-                "topics": [topic],  # API expects topics as a list
+                "context_refs": [],  # Empty for now, can be populated later
+                "topics": [topic] if isinstance(topic, str) else topic,
                 "difficulty": difficulty,
-                "num_questions": num_questions,
-                "student_features": student_data or self._get_default_student_data()
+                "type": "mcq",  # Multiple choice questions
+                "n_questions": num_questions,
+                "include_explanations": True,
+                "include_resources": True,
+                "student_behavior": behavior_data
             }
             
             # Make API request
@@ -46,33 +53,20 @@ class QuizGenerationAPI:
             if response.status_code == 200:
                 quiz_data = response.json()
                 
-                # WORKAROUND: Fix API issues with duplicate questions and wrong count
+                # Process the response (assuming the new API returns cleaner data)
                 if 'questions' in quiz_data:
                     questions = quiz_data['questions']
                     
-                    # Remove duplicate questions by question text
-                    seen_questions = set()
-                    unique_questions = []
-                    
-                    for q in questions:
-                        question_text = q.get('question', '')
-                        if question_text and question_text not in seen_questions:
-                            seen_questions.add(question_text)
-                            unique_questions.append(q)
-                    
-                    # Limit to requested number of questions
-                    if len(unique_questions) > num_questions:
-                        unique_questions = unique_questions[:num_questions]
+                    # Ensure we have the right number of questions
+                    if len(questions) > num_questions:
+                        questions = questions[:num_questions]
                     
                     # Update the quiz data
-                    quiz_data['questions'] = unique_questions
-                    quiz_data['total_questions'] = len(unique_questions)
+                    quiz_data['questions'] = questions
+                    quiz_data['total_questions'] = len(questions)
                     
-                    # Log the fix
-                    original_count = len(questions)
-                    final_count = len(unique_questions)
                     if current_app:
-                        current_app.logger.info(f"Quiz API workaround: {original_count} -> {final_count} questions (requested: {num_questions})")
+                        current_app.logger.info(f"Quiz generated successfully: {len(questions)} questions for topic '{topic}'")
                 
                 return {
                     "success": True,
@@ -106,13 +100,13 @@ class QuizGenerationAPI:
     def generate_hint(self, question_text, student_data=None, hint_level=1, current_topic="General Knowledge"):
         """Generate a personalized hint for a quiz question"""
         try:
-            url = f"{self.base_url}/api/generate-hint"
+            url = f"{self.base_url}/generate-hint"
             
             payload = {
                 "question_text": question_text,
                 "current_topic": current_topic,
                 "hint_level": hint_level,
-                "student_behavior": student_data or self._get_default_student_data()
+                "student_behavior": student_data or self._get_default_student_behavior()
             }
             
             response = requests.post(
@@ -157,7 +151,7 @@ class QuizGenerationAPI:
     def check_api_health(self):
         """Check if the Quiz Generation API is healthy"""
         try:
-            response = requests.get(f"{self.base_url}/api/health", timeout=10)
+            response = requests.get(f"{self.base_url}/health", timeout=10)
             if response.status_code == 200:
                 health_data = response.json()
                 return {
@@ -179,30 +173,33 @@ class QuizGenerationAPI:
             quiz_attempt: QuizAttempt model instance
             
         Returns:
-            dict: Student behavioral analysis data
+            dict: Student behavioral analysis data formatted for new API
         """
         try:
             # Extract data from quiz attempt
             responses = json.loads(getattr(quiz_attempt, 'responses_json', None) or '{}')
             timing_data = json.loads(getattr(quiz_attempt, 'timing_data_json', None) or '{}')
             
-            # Convert to string format as expected by API
+            # Calculate behavioral metrics for new API format
             behavioral_data = {
-                "hint_count": str(getattr(quiz_attempt, 'hints_used', 0)),
-                "bottom_hint": str(getattr(quiz_attempt, 'reached_final_hint', False)).lower(),
-                "attempt_count": str(getattr(quiz_attempt, 'attempt_number', 1)),
-                "ms_first_response": str(getattr(quiz_attempt, 'time_to_first_answer', 5000) * 1000),
-                "duration": str((getattr(quiz_attempt, 'time_taken', None) or 300) * 1000),  # Convert to milliseconds
-                "confidence_frustrated": "0.1",  # Default values - could be calculated from responses
-                "confidence_confused": "0.3",
-                "confidence_concentrating": "0.5",
-                "confidence_bored": "0.1",
-                "action_count": str(len(responses)),
-                "hint_dependency": str(min(getattr(quiz_attempt, 'hints_used', 0) / max(len(responses), 1), 1.0)),
-                "response_speed": str(max(0.1, min(1.0, 60000 / max(getattr(quiz_attempt, 'time_taken', None) or 60, 1)))),
-                "confidence_balance": "0.6",
-                "engagement_ratio": str(max(0.1, min(1.0, len(responses) / max(getattr(quiz_attempt, 'total_questions', 10), 1)))),
-                "efficiency_indicator": "0.7"
+                "hint_count": getattr(quiz_attempt, 'hints_used', 0),
+                "bottom_hint": getattr(quiz_attempt, 'reached_final_hint', False),
+                "attempt_count": getattr(quiz_attempt, 'attempt_number', 1),
+                "ms_first_response": getattr(quiz_attempt, 'time_to_first_answer', 5000),
+                "duration": (getattr(quiz_attempt, 'time_taken', None) or 300) * 1000,  # Convert to milliseconds
+                "confidence_frustrated": round(getattr(quiz_attempt, 'confidence_frustrated', 0.1), 2),
+                "confidence_confused": round(getattr(quiz_attempt, 'confidence_confused', 0.3), 2),
+                "confidence_concentrating": round(getattr(quiz_attempt, 'confidence_concentrating', 0.5), 2),
+                "confidence_bored": round(getattr(quiz_attempt, 'confidence_bored', 0.1), 2),
+                "action_count": len(responses),
+                "hint_dependency": round(min(getattr(quiz_attempt, 'hints_used', 0) / max(len(responses), 1), 1.0), 2),
+                "response_speed": "medium",  # Can be "fast", "medium", "slow"
+                "confidence_balance": round(getattr(quiz_attempt, 'average_confidence', 0.6), 2),
+                "engagement_ratio": round(max(0.1, min(1.0, len(responses) / max(getattr(quiz_attempt, 'total_questions', 10), 1))), 2),
+                "efficiency_indicator": round(getattr(quiz_attempt, 'efficiency_score', 0.7), 2),
+                "predicted_score": round(getattr(quiz_attempt, 'score', 0) / 100, 2),  # Convert to 0-1 scale
+                "performance_category": self._get_performance_category(getattr(quiz_attempt, 'score', 0)),
+                "learner_profile": self._get_learner_profile(quiz_attempt)
             }
             
             return behavioral_data
@@ -213,26 +210,59 @@ class QuizGenerationAPI:
                 current_app.logger.error(error_msg)
             else:
                 print(f"Error: {error_msg}")
-            return self._get_default_student_data()
+            return self._get_default_student_behavior()
 
-    def _get_default_student_data(self):
-        """Get default student behavioral data for API requests"""
+    def _get_performance_category(self, score):
+        """Determine performance category based on score"""
+        if score >= 85:
+            return "excellent"
+        elif score >= 70:
+            return "good"
+        elif score >= 60:
+            return "average"
+        elif score >= 40:
+            return "struggling"
+        else:
+            return "needs_help"
+
+    def _get_learner_profile(self, quiz_attempt):
+        """Determine learner profile based on attempt data"""
+        hints_used = getattr(quiz_attempt, 'hints_used', 0)
+        time_taken = getattr(quiz_attempt, 'time_taken', None) or 300
+        score = getattr(quiz_attempt, 'score', 0)
+        
+        if hints_used > 3 and time_taken > 600:
+            return "methodical_learner"
+        elif hints_used == 0 and time_taken < 180:
+            return "quick_learner"
+        elif score >= 80 and hints_used <= 1:
+            return "confident_learner"
+        elif hints_used > 2 and score < 60:
+            return "struggling_learner"
+        else:
+            return "balanced_learner"
+
+    def _get_default_student_behavior(self):
+        """Get default student behavioral data for API requests (new format)"""
         return {
-            "hint_count": "0",
-            "bottom_hint": "false",
-            "attempt_count": "1",
-            "ms_first_response": "5000",
-            "duration": "30000",
-            "confidence_frustrated": "0.1",
-            "confidence_confused": "0.3",
-            "confidence_concentrating": "0.5",
-            "confidence_bored": "0.1",
-            "action_count": "10",
-            "hint_dependency": "0.2",
-            "response_speed": "0.7",
-            "confidence_balance": "0.6",
-            "engagement_ratio": "0.8",
-            "efficiency_indicator": "0.7"
+            "hint_count": 0,
+            "bottom_hint": False,
+            "attempt_count": 1,
+            "ms_first_response": 5000,
+            "duration": 300000,  # 5 minutes in milliseconds
+            "confidence_frustrated": 0.1,
+            "confidence_confused": 0.3,
+            "confidence_concentrating": 0.5,
+            "confidence_bored": 0.1,
+            "action_count": 10,
+            "hint_dependency": 0.2,
+            "response_speed": "medium",
+            "confidence_balance": 0.6,
+            "engagement_ratio": 0.8,
+            "efficiency_indicator": 0.7,
+            "predicted_score": 0.75,
+            "performance_category": "good",
+            "learner_profile": "balanced_learner"
         }
 
 

@@ -34,7 +34,11 @@ from extensions import db
 db.init_app(app)
 
 # Import models
-from models import Student, Quiz, QuizAttempt, ChatSession, ChatMessage, StudentRecommendation, Answer, Question
+from models import (
+    Student, Quiz, QuizAttempt, ChatSession, ChatMessage, 
+    StudentRecommendation, Answer, Question, QuestionOption,
+    StudentProfile, MLPrediction, Topic
+)
 
 # Import quiz generation API integration
 from quiz_api_integration import quiz_api
@@ -148,8 +152,6 @@ def call_ml_api_for_prediction(attempt, student_id):
 def store_ml_prediction(student_id, attempt_id, prediction_data):
     """Store ML prediction data in the database"""
     try:
-        from models import MLPrediction
-        
         prediction = MLPrediction(
             student_id=student_id,
             quiz_attempt_id=attempt_id,
