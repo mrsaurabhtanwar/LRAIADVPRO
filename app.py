@@ -2,6 +2,7 @@
 import logging
 import requests
 import json
+from typing import Dict, Any, Optional, List, cast
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -31,17 +32,27 @@ else:
 
 # Initialize extensions
 from extensions import db
+from typing import List, Optional, Any
 db.init_app(app)
+
+# Import quiz generation API integration first
+from quiz_api_integration_with_fallback import QuizGenerationAPI
 
 # Import models
 from models import (
     Student, Quiz, QuizAttempt, ChatSession, ChatMessage, 
-    StudentRecommendation, Answer, Question, QuestionOption,
+    StudentRecommendation, Question, QuestionOption,
     StudentProfile, MLPrediction, Topic
 )
 
-# Import quiz generation API integration
-from quiz_api_integration import quiz_api
+# Initialize quiz API globally
+quiz_api = QuizGenerationAPI()
+
+def get_quiz_questions(quiz_id: int) -> List[Question]:
+    """Helper function to get questions for a quiz with explicit Question model usage"""
+    questions = Question.query.filter_by(quiz_id=quiz_id).order_by(Question.order_index).all()
+    # Explicitly using Question model type to resolve Pylance warning
+    return questions
 
 # Template filters
 @app.template_filter('chr')
@@ -428,23 +439,32 @@ def quiz_question(question_num):
 
     current_question = questions[question_num - 1]
     
-    # Debug: Print question structure
-    print(f"DEBUG: Displaying question {question_num}")
-    print(f"DEBUG: Question data: {current_question}")
-    print(f"DEBUG: Has options: {'options' in current_question}")
+    # Clean and format question text
+    question_text = current_question.get('question', current_question.get('text', ''))
+    # Handle potential Markdown or LaTeX in question text
+    question_text = question_text.replace('\n', '<br>')
     
-    # Safe check for options
-    if 'options' in current_question and current_question['options'] is not None:
-        print(f"DEBUG: Number of options: {len(current_question['options'])}")
-        print(f"DEBUG: Options: {current_question['options']}")
-    else:
-        print("DEBUG: Options is None or missing!")
-        # Look for other possible keys that might contain the choices
-        for key, value in current_question.items():
-            if isinstance(value, list) and value:
-                print(f"DEBUG: Found list in key '{key}': {value}")
-            elif key in ['choices', 'answers', 'alternatives', 'mcq_options']:
-                print(f"DEBUG: Found potential options in key '{key}': {value}")
+    # Format each option
+    options = current_question.get('options', [])
+    formatted_options = []
+    for option in options:
+        if isinstance(option, dict):
+            option_text = option.get('text', '').strip()
+            formatted_options.append({
+                'id': option.get('id', 'A'),
+                'text': option_text,
+                'option_text': option_text  # For backward compatibility
+            })
+        elif isinstance(option, str):
+            formatted_options.append({
+                'id': 'A',
+                'text': option.strip(),
+                'option_text': option.strip()
+            })
+    
+    # Update question with formatted data
+    current_question['question'] = question_text
+    current_question['options'] = formatted_options
 
     return render_template('quiz_question.html',
                            question=current_question,
@@ -762,59 +782,91 @@ def quiz_generation_form():
 @app.route('/quiz/generate', methods=['POST'])
 @login_required
 def generate_quiz():
-    """Generate a quiz using the external API"""
-    topic = request.form.get('topic')
-    difficulty = request.form.get('difficulty', 'medium')
-    num_questions = int(request.form.get('num_questions', 5))
-    
-    if not topic:
-        flash('Topic is required for quiz generation')
-        return render_template('generate_quiz.html')
-    
-    # Get student behavioral data for personalization
-    student_id = session['user_id']
-    recent_attempts = QuizAttempt.query.filter_by(
-        student_id=student_id,
-        is_completed=True
-    ).order_by(QuizAttempt.completed_at.desc()).limit(3).all()
-    
-    # Analyze student behavior for API personalization
-    student_data = None
-    if recent_attempts:
-        student_data = quiz_api.analyze_student_behavior(recent_attempts[0])
-    
-    # Generate quiz using external API
-    result = quiz_api.generate_quiz(
-        topic=topic,
-        difficulty=difficulty,
-        num_questions=num_questions,
-        student_data=student_data
-    )
-    
-    if result['success']:
-        # Create and save quiz to database
-        quiz_data = result['quiz']
+    """Generate a quiz using the external API with error handling"""
+    try:
+        topic: str = request.form.get('topic', '')
+        difficulty: str = request.form.get('difficulty', 'medium')
+        try:
+            num_questions: int = int(request.form.get('num_questions', '5'))
+        except (ValueError, TypeError):
+            num_questions = 5
+            app.logger.warning('Invalid num_questions value, using default of 5')
         
-        # Create new Quiz object
-        new_quiz = Quiz(
-            title=f"{topic} Quiz - {difficulty.title()}",
-            description=f"AI-generated quiz on {topic}",
-            topic=topic,
-            difficulty=difficulty,
-            questions_json=json.dumps(quiz_data.get('questions', [])),
-            is_active=True,
-            created_at=datetime.now()
-        )
+        if not topic:
+            flash('Topic is required for quiz generation')
+            return render_template('generate_quiz.html')
+    
+        # Get student behavioral data for personalization
+        student_id: int = session.get('user_id')
+        if not student_id:
+            flash('Please log in to generate a quiz')
+            return redirect(url_for('login'))
+            
+        recent_attempts = QuizAttempt.query.filter_by(
+            student_id=student_id,
+            is_completed=True
+        ).order_by(QuizAttempt.completed_at.desc()).limit(3).all()
         
-        db.session.add(new_quiz)
-        db.session.commit()
+        # Analyze student behavior for API personalization
+        student_data = None
+        try:
+            if recent_attempts:
+                student_data = quiz_api.analyze_student_behavior(recent_attempts[0])
+        except Exception as e:
+            app.logger.error(f"Error analyzing student behavior: {e}")
+            # Continue without student data
+        # Extract grade level from topic if possible
+        grade_level = None
+        topic_lower = topic.lower()
+        if "grade" in topic_lower:
+            grade_level = next((str(i) for i in range(1, 13) if str(i) in topic_lower), None)
+        elif "class" in topic_lower:
+            grade_level = next((str(i) for i in range(1, 13) if str(i) in topic_lower), None)
+
+        # Generate quiz through the API (it will use CSV fallback automatically)
+        generation_result = quiz_api.generate_quiz(topic, difficulty, num_questions, student_data)
         
-        flash(f'Quiz generated successfully! {num_questions} questions on {topic}')
-        return redirect(url_for('start_quiz', quiz_id=new_quiz.id))
-    else:
-        flash(f"Failed to generate quiz: {result['message']}")
+        if not generation_result.get('success'):
+            flash(generation_result.get('message', 'Failed to generate quiz'))
+            return redirect(url_for('quiz_selection'))
+        
+        quiz_data = cast(Dict[str, Any], generation_result.get('quiz', {}))
+        
+        if not isinstance(quiz_data, dict) or 'questions' not in quiz_data:
+            flash('Invalid quiz data received')
+            return redirect(url_for('quiz_selection'))
+        
+        try:
+            # Create new Quiz object with appropriate fields
+            new_quiz = Quiz()
+            new_quiz.title = str(f"{topic} Quiz - {difficulty.title()}")
+            new_quiz.description = str(f"Quiz from question bank on {topic}")
+            new_quiz.topic = str(topic)
+            new_quiz.difficulty = str(difficulty)
+            new_quiz.content_source_type = "csv"
+            new_quiz.content_source_data = json.dumps({"topic": topic, "difficulty": difficulty})
+            new_quiz.is_active = True
+            new_quiz.time_limit = 60  # Default 60 minutes
+            new_quiz.questions_json = json.dumps(quiz_data['questions'])
+            new_quiz.max_score = 100
+            
+            db.session.add(new_quiz)
+            db.session.commit()
+            
+            flash(f'Quiz created successfully! {len(quiz_data.get("questions", []))} questions on {topic}')
+            return redirect(url_for('start_quiz', quiz_id=new_quiz.id))
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error creating quiz: {e}")
+            flash(f'Error creating quiz: {str(e)}')
+            return redirect(url_for('quiz_selection'))
+        
+    except Exception as e:
+        app.logger.error(f"Error creating quiz: {str(e)}")
+        flash(f"Failed to create quiz: {str(e)}")
         return render_template('generate_quiz.html', 
-                             error=result.get('error'),
+                             error="Failed to create quiz from question bank",
                              topic=topic,
                              difficulty=difficulty,
                              num_questions=num_questions)

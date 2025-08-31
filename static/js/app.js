@@ -46,6 +46,8 @@ function startQuizTimer() {
 function submitQuizAnswer(questionId, questionNum, totalQuestions) {
     const selectedAnswer = document.querySelector('input[name="answer"]:checked') || 
                           document.querySelector('textarea[name="answer"]');
+    const confidenceSlider = document.getElementById('confidenceSlider');
+    const confidence = confidenceSlider ? confidenceSlider.value : 0.5;
     
     if (!selectedAnswer || !selectedAnswer.value.trim()) {
         showAlert('Please select or enter an answer', 'warning');
@@ -53,13 +55,16 @@ function submitQuizAnswer(questionId, questionNum, totalQuestions) {
     }
     
     const responseTime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-    const hintsUsed = parseInt(document.getElementById('hints-used').textContent) || 0;
+    const hintsUsed = parseInt(document.getElementById('hints-used')?.textContent) || 0;
     
-    // Disable submit button to prevent double submission
+    // Disable form and show loading state
+    const form = document.querySelector('.quiz-form');
     const submitBtn = document.querySelector('.btn-submit');
+    const allInputs = form.querySelectorAll('input, textarea, button');
+    allInputs.forEach(input => input.disabled = true);
+    
     if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
     }
     
     fetch('/quiz/submit_answer', {
@@ -71,28 +76,27 @@ function submitQuizAnswer(questionId, questionNum, totalQuestions) {
             question_id: questionId,
             answer: selectedAnswer.value.trim(),
             response_time: responseTime,
-            hints_used: hintsUsed
+            hints_used: hintsUsed,
+            confidence: confidence
         })
     })
     .then(response => response.json())
     .then(data => {
         showAnswerFeedback(data);
         
-        // Move to next question after delay
-        setTimeout(() => {
-            if (questionNum === totalQuestions) {
-                window.location.href = '/quiz/complete';
-            } else {
-                window.location.href = `/quiz/question/${questionNum + 1}`;
-            }
-        }, 2500);
+        // Immediately move to next question/completion
+        if (questionNum === totalQuestions) {
+            window.location.href = '/quiz/complete';
+        } else {
+            window.location.href = `/quiz/question/${questionNum + 1}`;
+        }
     })
     .catch(error => {
         console.error('Error:', error);
         showAlert('An error occurred while submitting your answer. Please try again.', 'danger');
+        allInputs.forEach(input => input.disabled = false);
         if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Submit Answer';
+            submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Answer';
         }
     });
 }

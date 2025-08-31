@@ -1,0 +1,216 @@
+class,difficulty,question,option_A,option_B,option_C,option_D,answer
+1,easy,Write the number that comes after 7.,8,7,9,6,A
+1,easy,How many fingers are there on one hand?,6,4,5,3,C
+1,easy,Add: 3 + 2 = ?,4,5,6,3,B
+1,easy,Subtract: 5 - 2 = ?,2,3,4,1,B
+1,easy,Count and write how many apples are shown (picture-free): 4 apples.,3,4,5,6,B
+1,easy,"Which shape has 3 sides: square, triangle, or circle?",square,circle,triangle,rectangle,C
+1,medium,Add: 9 + 6 = ?,15,14,16,13,A
+1,medium,Subtract: 15 - 7 = ?,7,9,8,6,C
+1,medium,"Fill in the missing number: 4, 5, __, 7.",5,6,7,8,B
+1,medium,Write the number that is 2 less than 12.,10,9,11,8,A
+1,medium,"If you have 2 candies and your friend gives 3 more, how many candies in total?",4,5,6,3,B
+1,medium,Group 10 objects into two equal parts. How many in each part?,4,5,6,8,B
+1,hard,Add three numbers: 4 + 7 + 6 = ?,17,16,18,15,A
+1,hard,There are 12 birds and 5 fly away. How many birds remain?,8,6,7,5,C
+1,hard,Share 9 sweets equally among 3 children. How many each?,2,3,4,6,B
+1,hard,Complete: 8 + __ = 15.,6,7,8,5,B
+1,hard,Which is greater: 14 or 41? (choose),14,41,They are equal,Cannot say,B
+1,hard,Write the two-digit number formed by digits 1 and 3.,31,13,103,130,B
+2,easy,Add: 12 + 5 = ?,17,16,18,15,A
+2,easy,Subtract: 20 - 9 = ?,9,11,12,13,B
+2,easy,What is double of 6?,6,10,12,8,C
+2,easy,Count by twos: write next number after 10.,11,12,13,14,B
+2,easy,"Write the ordinal form of 3 (e.g., 1st, 2nd, ...).",3rd,3th,third,3,A
+2,easy,How many sides does a rectangle have?,3,4,5,6,B
+2,medium,Add: 27 + 14 = ?,40,41,39,42,B
+2,medium,Subtract: 46 - 18 = ?,26,27,28,29,C
+2,medium,"If 5 groups of 4 apples, how many apples?",20,18,9,15,A
+2,medium,"Write the time shown as ""half past 3"" in hours and minutes.",3:00,3:15,3:30,4:00,C
+2,medium,Round 34 to nearest ten.,30,34,40,35,A
+2,medium,Find the missing number: 6 × __ = 36.,5,6,7,8,B
+2,hard,Add: 58 + 27 = ?,85,84,86,83,A
+2,hard,Subtract: 100 - 37 = ?,63,67,73,53,A
+2,hard,Divide: 48 ÷ 6 = ?,6,7,8,9,C
+2,hard,"If a ribbon 24 cm is cut into 4 equal pieces, how long is each piece?",4 cm,6 cm,8 cm,12 cm,B
+2,hard,Write all even numbers between 10 and 20.,"12,14,16,18","11,13,15,17","10,12,14,16,18,20","12,13,14,15",A
+2,hard,Solve: __ + 19 = 45.,24,26,25,23,B
+3,easy,Add: 123 + 45 = ?,168,167,170,158,A
+3,easy,Subtract: 200 - 76 = ?,134,124,144,114,B
+3,easy,What is 3 × 7?,21,20,24,18,A
+3,easy,Write fractions: one half as a fraction.,1/3,1/2,2/3,1/4,B
+3,easy,Which is greater: 305 or 350?,305,350,They are equal,Cannot say,B
+3,easy,Count the number of tens in 140.,14,4,140,10,A
+3,medium,Multiply: 14 × 6 = ?,84,80,90,70,A
+3,medium,Divide: 81 ÷ 9 = ?,8,9,7,10,B
+3,medium,Add: 256 + 348 = ?,604,594,614,598,A
+3,medium,Write the fraction for 3 out of 8 objects.,3/8,1/8,3/4,8/3,A
+3,medium,Convert 2 tens and 7 ones to number.,27,20,72,17,A
+3,medium,Find perimeter of a rectangle with sides 7 cm and 4 cm.,22 cm,14 cm,28 cm,18 cm,A
+3,hard,Multiply: 23 × 5 = ?,115,110,120,105,A
+3,hard,Subtract: 1000 - 589 = ?,411,421,391,409,A
+3,hard,"If each packet has 12 candies, how many candies in 9 packets?",96,108,112,100,B
+3,hard,Write 0.5 as a fraction.,1/2,1/3,5/10,2/5,A
+3,hard,Find area of a rectangle with length 8 cm and width 5 cm.,40 cm²,13 cm²,30 cm²,45 cm²,A
+3,hard,Solve: 7 × (4 + 3) = ? (use brackets),49,42,56,45,A
+4,easy,Add: 345 + 128 = ?,473,463,483,453,A
+4,easy,Subtract: 500 - 267 = ?,233,243,213,253,A
+4,easy,Multiply: 9 × 8 = ?,72,81,64,69,A
+4,easy,Write the fraction for 5 out of 10.,1/2,1/3,2/5,5/10,A
+4,easy,What is 1/4 of 20?,4,5,6,8,B
+4,easy,"Find the next number in pattern: 5, 10, 15, __.",17,20,25,18,B
+4,medium,Divide: 144 ÷ 12 = ?,12,14,10,16,A
+4,medium,Find LCM of 6 and 8 (smallest common multiple).,24,48,12,16,A
+4,medium,Convert 3/4 to a decimal.,0.75,0.5,0.25,0.33,A
+4,medium,Perimeter of square with side 9 cm = ?,36 cm,18 cm,27 cm,9 cm,A
+4,medium,Add: 789 + 214 = ?,1003,993,1001,1004,A
+4,medium,Find the missing number: __ × 7 = 315.,45,35,40,50,A
+4,hard,Area of triangle with base 10 cm and height 6 cm = ? (use 1/2 × base × height),30 cm²,60 cm²,16 cm²,40 cm²,A
+4,hard,Simplify: 15 ÷ (3 × 1) + 4 = ?,9,8,5,10,A
+4,hard,A rectangular garden 12 m by 5 m — how much fencing for all sides?,34 m,60 m,24 m,30 m,A
+4,hard,"If pizza is cut into 8 equal slices and you eat 3, what fraction is left?",3/8,5/8,1/2,2/3,B
+4,hard,Round 476 to nearest hundred.,400,500,480,470,B
+4,hard,"A box contains 60 apples, packed in boxes of 6. How many boxes?",8,9,10,12,C
+5,easy,"Add: 1,234 + 567 = ?",1801,1791,1701,1901,A
+5,easy,"Subtract: 2,000 - 1,356 = ?",644,654,634,624,A
+5,easy,Multiply: 12 × 11 = ?,132,121,142,112,A
+5,easy,Write decimal for 3/10.,0.03,0.3,3.0,0.33,B
+5,easy,What is 10% of 200?,20,10,200,2,A
+5,easy,Name a polygon with 5 sides.,square,triangle,pentagon,hexagon,C
+5,medium,"Find mean (average) of: 5, 7, 9, 11.",8,7,9,8.5,A
+5,medium,Calculate perimeter of rectangle 15 cm and 8 cm.,23 cm,46 cm,30 cm,40 cm,B
+5,medium,Simplify: 25 ÷ 5 + 6 × 2 = ?,10,17,20,16,B
+5,medium,Find area of square with side 7 cm.,49 cm²,14 cm²,28 cm²,56 cm²,A
+5,medium,Convert 0.75 to fraction.,3/4,1/2,75/100,2/3,A
+5,medium,"If a book costs ₹120 and discount is 10%, what is sale price?",₹108,₹112,₹100,₹110,A
+5,hard,Find HCF (GCD) of 36 and 48.,6,12,18,24,B
+5,hard,Solve: 3/4 + 1/6 = ? (common denominator),11/12,5/6,2/3,13/12,A
+5,hard,Find area of triangle with base 14 cm and height 9 cm.,63 cm²,126 cm²,23 cm²,63 m²,A
+5,hard,"If speed = 60 km in 1.5 hours, what is speed in km/h?",40 km/h,45 km/h,30 km/h,60 km/h,A
+5,hard,"Round 3,749 to nearest thousand.",3000,4000,3500,3749,B
+5,hard,"If a train travels 180 km in 3 hours, what's average speed?",60 km/h,50 km/h,30 km/h,90 km/h,A
+6,easy,Evaluate: 7 × 8 = ?,54,56,58,60,B
+6,easy,Find prime numbers less than 10.,"2,3,5,7","1,2,3","2,4,6","3,5,7,9",A
+6,easy,Write the factors of 18.,"1,2,3,6,9,18","1,3,6,18","2,4,6,9","1,2,3,9",A
+6,easy,Convert 2.5 to fraction.,5/2,2/5,25/10,5/4,A
+6,easy,What is 15% of 200?,20,30,25,15,B
+6,easy,Simplify: 9 + (4 × 3) = ?,21,19,12,17,A
+6,medium,Solve: 3x = 21. Find x.,6,7,8,5,B
+6,medium,Calculate area of circle with radius 7 cm (use πr² — leave π).,49π cm²,14π cm²,7π cm²,154π cm²,A
+6,medium,Simplify: (12 ÷ 3) + (5 × 2) = ?,12,14,16,10,B
+6,medium,"Find median of: 4, 9, 11, 6, 2.",6,7,5,9,A
+6,medium,Express 45° as fraction of 180°.,1/4,1/3,1/2,1/6,A
+6,medium,"If ratio of boys to girls is 3:2 and total 25, how many boys? (assume whole numbers)",15,10,12,18,A
+6,hard,Solve: 2x + 5 = 17. Find x.,6,5,7,4,A
+6,hard,Simplify: 4² + 3³ = ?,43,36,43,40,A
+6,hard,"A map scale 1:50,000 — distance on map 3 cm. Real distance in km?",1.5 km,15 km,0.15 km,150 km,A
+6,hard,Find area of trapezium with parallel sides 8 and 6 and height 5 (use 1/2 × sum × height).,35,28,40,30,A
+6,hard,"If a number is divisible by both 4 and 6, it is divisible by which LCM? (find LCM of 4 and 6)",10,12,24,6,B
+6,hard,Find LCM of 9 and 12.,12,18,36,9,C
+7,easy,Evaluate: 5² = ?,10,25,20,15,B
+7,easy,Simplify: 2(a + 3) when a = 4.,10,16,14,18,C
+7,easy,Convert 125% to a decimal.,1.25,0.125,12.5,125,A
+7,easy,"Find the perimeter of triangle with sides 3 cm, 4 cm, 5 cm.",12 cm,9 cm,15 cm,10 cm,A
+7,easy,List first three multiples of 7.,"7,14,21","7,13,19","7,21,28","14,21,28",A
+7,easy,What is the reciprocal of 4?,1/4,4,-4,1/2,A
+7,medium,Solve: x/5 = 7. Find x.,7,35,12,5,B
+7,medium,Factor: x² - 9.,(x-3)(x+3),(x-9)(x+1),(x-2)(x+2),(x-1)(x+9),A
+7,medium,Simplify: (3/4) × (8/9) = ?,2/3,3/2,4/3,1/2,A
+7,medium,Find area of parallelogram with base 10 and height 6.,60,16,40,100,A
+7,medium,"If angle A is 40°, find its supplement.",140°,50°,90°,180°,A
+7,medium,Find value of expression: 4(2x + 3) when x = 2.,24,20,28,16,C
+7,hard,Solve linear equation: 3x + 7 = 2x + 15.,x=8,x=7,x= -8,x=1,A
+7,hard,Expand: (x + 5)(x - 2).,x² + 3x -10,x² - 10,x² + 7x -10,x² -3x -10,A
+7,hard,A cylinder has radius 3 cm and height 7 cm — write formula for its volume and compute value in terms of π.,21π cm³,63π cm³,9π cm³,42π cm³,B
+7,hard,"A number sequence: 2, 5, 8, 11,... find 10th term.",29,30,32,27,A
+7,hard,Solve: 2/3 of a number is 24. Find the number.,36,32,24,48,A
+7,hard,Solve: (x+2)(x-3)=0. Find x.,x=1,x=-2 or x=3,x=2 or x=3,x=-3 or x=2,B
+8,easy,Solve: 6x = 42. Find x.,6,7,8,9,B
+8,easy,Factor: 2x + 6.,2(x+3),(2x)(6),x+3,2x+3,A
+8,easy,Convert 0.2 to fraction.,2/10,1/5,1/2,2/5,B
+8,easy,What is the value of π approximated as 22/7 used for? (circle calculations),Approximating π,Area of square,Perimeter of rectangle,Volume of cube,A
+8,easy,Find area of rectangle 12 cm by 5 cm.,60 cm²,17 cm²,24 cm²,30 cm²,A
+8,easy,Simplify: 3² + 4².,25,12,18,7,A
+8,medium,Solve the pair: x + y = 10 and x - y = 2. Find x and y.,"x=6,y=4","x=4,y=6","x=5,y=5","x=7,y=3",A
+8,medium,"Simplify: (x²y)/(xy²) = ? (assume x,y ≠ 0)",x/y,y/x,x²/y²,x,A
+8,medium,"Find the mean of: 12, 15, 18, 21.",16.5,16,17,15.5,A
+8,medium,"Find slope of line joining points (0,0) and (4,6).",3/2,2/3,6,4/6,A
+8,medium,Solve: 5(2x - 3) = 35.,x=4,x=3,x=5,x=2,A
+8,medium,Express 45% as a fraction in simplest form.,9/20,45/100,9/10,1/2,A
+8,hard,Factorise completely: x² + 5x + 6.,(x+2)(x+3),(x+1)(x+6),(x+3)(x+3),(x-2)(x-3),A
+8,hard,Solve quadratic: x² - 5x + 6 = 0.,x=2 or x=3,x= -2 or x= -3,x=1 or x=6,x= -1 or x= -6,A
+8,hard,"Find area of triangle given coordinates A(0,0), B(4,0), C(0,3) using coordinate geometry.",6,12,7,4,A
+8,hard,"A line passes through (1,2) with slope 3 — write its equation in y = mx + c form.",y=3x-1,y=3x+1,y=2x+1,y=3x+2,A
+8,hard,"If population grows 10% per year, approximate population after 2 years from P using formula.",P * 1.20,P * 1.21,P * 1.1,P * 2.0,B
+9,easy,Simplify: 2x + 3x = ?,5x,x,6x,2x,A
+9,easy,Factor: 3(x + 2).,3x+6,x+2,3x+2,3(x-2),A
+9,easy,Solve: x - 5 = 12. Find x.,7,17,-7,12,B
+9,easy,Convert 3/5 to decimal.,0.6,0.3,0.5,1.6,A
+9,easy,"What is the median of 3, 7, 9?",7,6,5,9,A
+9,easy,Area of square with side 9 cm = ?,81 cm²,36 cm²,18 cm²,90 cm²,A
+9,medium,Solve: 2x + 3 = 11.,4,5,3,2,A
+9,medium,Simplify: (x²·x³) = ?,x^5,x^6,x^3,x,A
+9,medium,"If 5a = 20, find a.",3,4,5,2,B
+9,medium,Find surface area of cube with side 4 cm.,96 cm²,24 cm²,64 cm²,48 cm²,A
+9,medium,"Find value of x if triangle angles are x, 2x, and 3x (sum 180°).",30°,45°,60°,20°,A
+9,medium,Find perimeter of semicircle of radius 7 (use πr + 2r).,π*7 + 14,2π*7,π*14,π*7,A
+9,hard,Solve simultaneously: 2x + y = 10 and x - y = 2.,"x=4,y=2","x=3,y=4","x=5,y=0","x=2,y=6",A
+9,hard,Prove: (a + b)² = a² + 2ab + b² by expansion (state steps).,a²+2ab+b²,a²+b²,a²-2ab+b²,a²+ab+b²,A
+9,hard,"A ladder leans against a wall forming right triangle; if base 3 m and height 4 m, find ladder length.",4 m,5 m,3 m,6 m,B
+9,hard,"If sinθ = 3/5 in a right triangle, find cosθ.",4/5,3/4,5/3,1/2,A
+9,hard,"If f(x) = 2x + 3, find f(4). (function evaluation)",10,11,12,9,B
+9,hard,"If tanθ = 1, what is θ in degrees (principal)?",30°,45°,60°,90°,B
+10,easy,Factor: x² - 4 = ?,(x-2)(x+2),(x-4)(x+1),(x-1)(x+4),(x-2)²,A
+10,easy,Solve: 5x = 45. Find x.,8,9,7,10,B
+10,easy,Express 0.625 as fraction.,5/8,625/1000,1/2,3/4,A
+10,easy,Calculate simple interest on ₹1000 for 2 years at 5% per year.,₹50,₹100,₹150,₹200,B
+10,easy,Find the value of x: 3x + 4 = 19.,5,6,4,7,A
+10,easy,Find area of circle with radius 7 cm (use πr²).,49π cm²,14π cm²,7π cm²,154π cm²,A
+10,medium,Solve quadratic: x² - 3x - 10 = 0.,x=5 or x=-2,x=2 or x=-5,x= -2 or x=5,x=3 or x=-3,A
+10,medium,Solve: (x/2) + (x/3) = 5. Find x.,6,5,8,7,A
+10,medium,Prove that 7 is prime or composite (state why).,composite,prime (no divisors except 1 and 7),both,neither,B
+10,medium,"If two triangles are similar, what ratios are equal? (side-side relation)",corresponding sides are proportional,angles are different,perimeters equal,areas equal,A
+10,medium,"Find the equation of a line with slope 2 passing through (1,1).",y=2x+1,y=2x-1,y=x+2,y=2x,B
+10,medium,"If a die is rolled once, what is probability of getting an even number?",1/3,1/2,1/6,2/3,B
+10,hard,Find area under straight line between x = 1 and x = 4 for y = 2x + 1 (treat as trapezoid).,18,20,16,15,A
+10,hard,Solve: x² + 4x + 4 = 0 (identify nature of roots).,Real equal roots x=-2,Real unequal roots,Complex roots,No roots,A
+10,hard,Differentiate: y = x² (find dy/dx).,x,2x,x²,2,B
+10,hard,"If vectors a = (2,3) and b = (1,4), find a·b (dot product).",14,11,8,10,A
+10,hard,A circle and a line intersect — state condition for tangency in terms of discriminant (conceptual).,discriminant > 0,discriminant < 0,discriminant = 0,no relation,C
+10,hard,Evaluate definite integral: ∫_{0}^{2} 2x dx.,2,4,6,8,B
+11,easy,Simplify: (2x + 3) + (x - 1).,3x+2,x+2,x+4,2x+3,A
+11,easy,Differentiate: y = 3x (dy/dx).,3,x,0,1,A
+11,easy,Find domain of f(x) = 1/x.,x ≠ 0,x = 0,x ≥ 0,All real numbers,A
+11,easy,Factorise: x² - 5x + 6.,(x-2)(x-3),(x-1)(x-6),(x+2)(x+3),(x-3)(x-3),A
+11,easy,What is the sum of interior angles of a triangle?,180°,90°,360°,270°,A
+11,easy,Convert 120° to radians.,2π/3,π/2,π/3,π,A
+11,medium,Evaluate derivative: d/dx (x³) = ?,3x²,x²,3x,x³,A
+11,medium,Solve: log₁₀ 100 = ?,1,2,10,100,B
+11,medium,"If f(x) = x², find f'(2).",2,4,8,1,B
+11,medium,Integrate: ∫ 2x dx (indefinite integral).,x² + C,2x + C,x + C,x³/3 + C,A
+11,medium,Solve: sin 30° = ?,1/2,√2/2,√3/2,1,A
+11,medium,State formula for compound interest yearly (no derivation needed).,A = P(1 + r)^n,A = P + Prn,A = P(1 + r/n),A = P(1 - r)^n,A
+11,hard,Differentiate: y = sin x (give dy/dx).,cos x,sin x,-sin x,-cos x,A
+11,hard,Integrate: ∫ x² dx.,x³/3 + C,x² + C,x/3 + C,3x² + C,A
+11,hard,Solve quadratic using formula: x² - 4x + 3 = 0 (find roots).,x=1 or x=3,x=-1 or x=-3,x=2 or x=-2,x=3 or x=4,A
+11,hard,Find equation of tangent to y = x² at x = 1.,y = 2x -1,y = x + 1,y = 3x -2,y = x²,A
+11,hard,"Evaluate determinant of 2×2 matrix [[2,3],[1,4]].",5,-5,8,7,A
+11,hard,Find limit lim_{x→0} (sin x)/x.,0,1,∞,-1,B
+12,easy,Differentiate: y = 5x².,5x,10x,x²,25x,B
+12,easy,Integrate: ∫ 3 dx.,3x + C,x + C,3 + C,x^3/3 + C,A
+12,easy,Solve: 2^3 = ?,6,8,9,4,B
+12,easy,Find inverse function of f(x)=x+3 (write f⁻¹(x)).,x+3,x-3,1/(x+3),-x+3,B
+12,easy,Find limit: lim_{x→2} (x² - 4)/(x - 2).,2,4,0,∞,B
+12,easy,Differentiate: y = ln x (state derivative).,1/x,ln x,x,e^x,A
+12,medium,Integrate: ∫ (2x) dx.,x² + C,2x + C,x + C,x^3/3 + C,A
+12,medium,Solve differential equation dy/dx = 3x² (find general solution).,y = x^3 + C,y = 3x + C,y = x^2 + C,y = 9x + C,A
+12,medium,"Find eigenvalues of matrix [[2,0],[0,3]].",2 and 3,0 and 5,2 and -3,1 and 6,A
+12,medium,Evaluate definite integral: ∫_{0}^{1} x dx.,1/2,1,1/3,0,A
+12,medium,Find derivative of e^{2x} with respect to x.,2e^{2x},e^{2x},2e^{x},e^{x},A
+12,medium,"If cosθ = 0.6, find secθ.",0.6,1/0.6 = 5/3,1.6,1.2,B
+12,hard,Differentiate y = x^3 + 2x^2 - x + 5 and evaluate at x = 1.,6,4,3,5,A
+12,hard,Compute ∫ x e^{x} dx (use integration by parts — leave result in terms of e^{x}).,(x-1)e^{x} + C,xe^{x} + C,e^{x} + C,x^2 e^{x} + C,A
+12,hard,Solve: dy/dx = y with initial condition y(0)=2 (separable ODE).,y=2e^{x},y=e^{2x},y=2x,y= e^{x},A
+12,hard,"Find inverse of 2×2 matrix [[1,2],[3,4]] (if exists).","(1/ -2) * [[4,-2],[-3,1]] i.e. [[-2,1],[1.5,-0.5]]","[[4,3],[2,1]]","[[1,2],[3,4]]",No inverse,A
+12,hard,"If f(x) = x³, find the Taylor series up to x³ term about 0 (state series terms).",x^3,x + x^2 + x^3,1 + x + x^2 + x^3,x^3 + higher terms,A
+12,hard,Compute derivative of ln(x^2).,1/(x^2),2/x,ln(2x),2ln x,B
