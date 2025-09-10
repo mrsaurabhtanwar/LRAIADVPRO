@@ -155,8 +155,8 @@
     <!-- AI Tutor Status -->
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-gradient-success text-white">
-                <h5 class="mb-0">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <h5 class="mb-0 text-white">
                     <i class="fas fa-robot me-2"></i>
                     AI Tutor Status
                 </h5>
@@ -304,7 +304,7 @@
                 <p class="card-text text-muted mb-4">
                     Get instant help and detailed explanations from our AI-powered tutor available 24/7.
                 </p>
-                <a href="{{ url_for('chat_interface') }}" class="btn btn-success btn-lg w-100">
+                <a href="{{ url_for('chat') }}" class="btn btn-success btn-lg w-100">
                     <i class="fas fa-comments me-2"></i>Start Chat
                 </a>
             </div>
@@ -322,7 +322,7 @@
                 <p class="card-text text-muted mb-4">
                     Track your learning progress and discover personalized recommendations for improvement.
                 </p>
-                <a href="{{ url_for('view_progress') }}" class="btn btn-info btn-lg w-100">
+                <a href="{{ url_for('progress') }}" class="btn btn-info btn-lg w-100">
                     <i class="fas fa-analytics me-2"></i>View Progress
                 </a>
             </div>
@@ -349,7 +349,7 @@
                         </div>
                     </div>
                     <div>
-                        <a href="{{ url_for('chat_interface') }}" class="btn btn-light btn-lg">
+                        <a href="{{ url_for('chat') }}" class="btn btn-light btn-lg">
                             <i class="fas fa-comments me-2"></i>Start Chat
                         </a>
                     </div>
@@ -472,7 +472,7 @@
                 <h5 class="mb-0 fw-bold">
                     <i class="fas fa-history me-2"></i>Recent Quiz Results
                 </h5>
-                <a href="{{ url_for('view_progress') }}" class="btn btn-outline-primary btn-sm">
+                <a href="{{ url_for('progress') }}" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-chart-bar me-1"></i>View All
                 </a>
             </div>
