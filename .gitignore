@@ -47,6 +47,7 @@ coverage.xml
 .pytest_cache/
 
 # Virtual environments
+myenv/
 venv/
 ENV/
 env/
@@ -79,7 +80,7 @@ educational_platform.db
 # Logs
 *.log
 
-# Test files (optional - you may want to keep these)
+# Test files
 test_*.py
 
 # Temporary and cleanup files
@@ -95,5 +96,3 @@ add_*.py
 update_*.py
 comprehensive_*.py
 advanced_*.py
-*.md
-!README.md

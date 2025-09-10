@@ -2,8 +2,8 @@
 import logging
 import requests
 import json
-from typing import Dict, Any, Optional, List, cast
-from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -32,36 +32,37 @@ else:
 
 # Initialize extensions
 from extensions import db
-from typing import List, Optional, Any
 db.init_app(app)
 
-# Import quiz generation API integration first
-from quiz_api_integration_with_fallback import QuizGenerationAPI
+# Quiz generation is now handled by quiz_generator_service
 
 # Import models
 from models import (
     Student, Quiz, QuizAttempt, ChatSession, ChatMessage, 
-    StudentRecommendation, Question, QuestionOption,
-    StudentProfile, MLPrediction, Topic
+    StudentRecommendation,
+    StudentProfile, MLPrediction, Topic, AIInteraction
 )
 
-# Initialize quiz API globally
-quiz_api = QuizGenerationAPI()
+# Quiz generation is now handled by quiz_generator_service
 
-def get_quiz_questions(quiz_id: int) -> List[Question]:
-    """Helper function to get questions for a quiz with explicit Question model usage"""
-    questions = Question.query.filter_by(quiz_id=quiz_id).order_by(Question.order_index).all()
-    # Explicitly using Question model type to resolve Pylance warning
-    return questions
+# Import and initialize RAG tutor service
+from rag_tutor_service import rag_tutor_service
+
+# Import ML API service
+from ml_api_service import ml_api_service
+
+# Import Quiz Generator service
+from quiz_generator_service import quiz_generator_service
+
 
 # Template filters
 @app.template_filter('chr')
-def chr_filter(number, offset=64):
+def chr_filter(number: int, offset: int = 64) -> str:
     """Convert number to letter (1->A, 2->B, etc.)"""
     return chr(number + offset)
 
 @app.template_filter('from_json')
-def from_json_filter(value):
+def from_json_filter(value: str) -> Any:
     """Convert JSON string to Python object"""
     import json
     return json.loads(value)
@@ -71,153 +72,142 @@ app.jinja_env.globals['abs'] = abs
 
 # ===================== SECURITY DECORATORS =====================
 
-def login_required(f):
+from typing import Callable
+
+
+def login_required(f: Callable) -> Callable:
     """Decorator to require login for routes"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any):
         if 'user_id' not in session:
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
+
     return decorated_function
 
 # ===================== ERROR HANDLERS =====================
 
 @app.errorhandler(404)
-def not_found_error(error):
+def not_found_error(error: Any) -> tuple[str, int]:
     return render_template('errors/404.html'), 404
 
 @app.errorhandler(500)
-def internal_error(error):
+def internal_error(error: Any) -> tuple[str, int]:
     db.session.rollback()
     return render_template('errors/500.html'), 500
 
 @app.errorhandler(403)
-def forbidden_error(error):
+def forbidden_error(error: Any) -> tuple[str, int]:
     return render_template('errors/403.html'), 403
 
 # ===================== ML API INTEGRATION FUNCTIONS =====================
 
-def call_ml_api_for_prediction(attempt, student_id):
-    """Call the ML API to get student performance prediction"""
+def call_ml_api_for_prediction(attempt: Any, student_id: int) -> Any:
+    """Call the ML API to get student performance prediction using enhanced service"""
     try:
-        # Prepare data for ML API based on quiz attempt
-        responses = json.loads(attempt.responses_json or '{}')
-        
-        # Calculate quiz metrics
-        hint_count = session.get('hints_used', 0)
-        bottom_hint = 1 if hint_count > 0 else 0
-        attempt_count = len(responses)  # Number of questions answered
-        
-        # Calculate timing metrics
-        timing_data = json.loads(attempt.timing_data_json or '{}') if hasattr(attempt, 'timing_data_json') else {}
-        ms_first_response = timing_data.get('first_response_time', 5000)  # Default 5 seconds
-        duration = timing_data.get('total_duration', 300000)  # Default 5 minutes
-        
-        # Mock confidence levels (you can replace with real data)
-        avg_conf_frustrated = 0.2
-        avg_conf_confused = 0.3  
-        avg_conf_concentrating = 0.7
-        avg_conf_bored = 0.1
-        
-        # Prepare API payload
-        api_data = {
-            "hint_count": float(hint_count),
-            "bottom_hint": float(bottom_hint),
-            "attempt_count": float(attempt_count),
-            "ms_first_response": float(ms_first_response),
-            "duration": float(duration),
-            "avg_conf_frustrated": avg_conf_frustrated,
-            "avg_conf_confused": avg_conf_confused,
-            "avg_conf_concentrating": avg_conf_concentrating,
-            "avg_conf_bored": avg_conf_bored
+        # Extract student metrics using the ML service
+        session_data = {
+            'hints_used': session.get('hints_used', 0)
         }
         
-        # Call ML API
-        ml_api_url = "https://ml-api-pz1u.onrender.com/predict"
-        response = requests.post(
-            ml_api_url,
-            json=api_data,
-            headers={'Content-Type': 'application/json'},
-            timeout=10
-        )
+        student_metrics = ml_api_service.extract_student_metrics(attempt, session_data)
         
-        if response.status_code == 200:
-            prediction_data = response.json()
-            app.logger.info(f"ML API prediction successful for student {student_id}")
-            return prediction_data
+        # Call ML API using the service
+        result = ml_api_service.predict_performance(student_metrics)
+        
+        if result['success']:
+            app.logger.info(f"ML API prediction successful for student {student_id} (attempt {result.get('attempt', 1)})")
+            return result['data']
         else:
-            app.logger.error(f"ML API returned status {response.status_code}: {response.text}")
+            app.logger.error(f"ML API prediction failed: {result['error']}")
             return None
             
-    except requests.exceptions.Timeout:
-        app.logger.error("ML API request timed out")
-        return None
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"ML API request failed: {e}")
-        return None
     except Exception as e:
         app.logger.error(f"Error calling ML API: {e}")
         return None
 
-def store_ml_prediction(student_id, attempt_id, prediction_data):
-    """Store ML prediction data in the database"""
+def store_ml_prediction(student_id: int, attempt_id: int, prediction_data: Dict[str, Any]) -> None:
+    """Store ML prediction data in the database with enhanced error handling"""
     try:
-        prediction = MLPrediction(
-            student_id=student_id,
-            quiz_attempt_id=attempt_id,
-            predicted_score=prediction_data['prediction']['correctness_score'],
-            category=prediction_data['prediction']['performance_category'],
-            confidence_level=prediction_data.get('confidence_level', 0.8),
-            learner_profile_json=json.dumps(prediction_data.get('learner_profile', {})),
-            features_json=json.dumps(prediction_data.get('behaviors', {})),
-            model_version="v1.0",
-            created_at=datetime.utcnow()
-        )
+        prediction = MLPrediction()
+        prediction.student_id = student_id
+        prediction.quiz_attempt_id = attempt_id
         
+        # Extract prediction data with fallbacks
+        prediction_info = prediction_data.get('prediction', {})
+        prediction.predicted_score = prediction_info.get('correctness_score', 0.5)
+        prediction.category = prediction_info.get('performance_category', 'Average')
+        prediction.confidence_level = prediction_data.get('confidence_level', 0.8)
+        
+        # Store learner profile and behaviors
+        prediction.learner_profile_json = json.dumps(prediction_data.get('learner_profile', {}))
+        prediction.features_json = json.dumps(prediction_data.get('behaviors', {}))
+        
+        # Store additional ML insights
+        prediction.model_version = prediction_data.get('model_version', 'v1.0')
+        prediction.created_at = datetime.now(timezone.utc)
+        
+        # Store raw API response for debugging
+        prediction.raw_response_json = json.dumps(prediction_data)
+
         db.session.add(prediction)
         db.session.commit()
-        
-        app.logger.info(f"ML prediction stored for student {student_id}")
-        
+
+        app.logger.info(f"ML prediction stored for student {student_id}: {prediction.category} (score: {prediction.predicted_score})")
+
     except Exception as e:
         app.logger.error(f"Error storing ML prediction: {e}")
         db.session.rollback()
 
-def update_student_profile_with_ml_data(student_id, prediction_data):
+def update_student_profile_with_ml_data(student_id: int, prediction_data: Dict[str, Any]) -> None:
     """Update student profile with ML insights"""
     try:
         from models import StudentProfile
         
         profile = StudentProfile.query.filter_by(student_id=student_id).first()
         if not profile:
-            profile = StudentProfile(student_id=student_id)
+            profile = StudentProfile()
+            profile.student_id = student_id
             db.session.add(profile)
         
         # Update profile with ML insights
         prediction = prediction_data.get('prediction', {})
         behaviors = prediction_data.get('behaviors', {})
+        learner_profile = prediction_data.get('learner_profile', {})
         
+        # Update basic prediction data
         profile.predicted_category = prediction.get('performance_category', 'General Learner')
         profile.confidence_level = prediction.get('correctness_score', 0.5)
-        profile.last_prediction_update = datetime.utcnow()
+        profile.last_prediction_update = datetime.now()
         profile.learner_profile_json = json.dumps(prediction_data)
         
-        # Update learning style based on behaviors
-        if behaviors.get('engagement') == 'High' and behaviors.get('efficiency') == 'High':
-            profile.learning_style = 'Active Learner'
-        elif behaviors.get('hint_dependency') == 'High':
-            profile.learning_style = 'Guided Learner'
-        elif behaviors.get('persistence') == 'High':
-            profile.learning_style = 'Persistent Learner'
+        # Update learning style based on ML analysis
+        if learner_profile:
+            # Use ML-determined learning style if available
+            profile.learning_style = learner_profile.get('learning_style', 'Adaptive Learner')
+        elif behaviors:
+            # Fallback to behavior-based classification
+            if behaviors.get('engagement') == 'High' and behaviors.get('efficiency') == 'High':
+                profile.learning_style = 'Active Learner'
+            elif behaviors.get('hint_dependency') == 'High':
+                profile.learning_style = 'Guided Learner'
+            elif behaviors.get('persistence') == 'High':
+                profile.learning_style = 'Persistent Learner'
+            else:
+                profile.learning_style = 'Adaptive Learner'
         else:
             profile.learning_style = 'Adaptive Learner'
+        
+        # Store additional ML insights
+        if behaviors:
+            profile.behavioral_insights_json = json.dumps(behaviors)
         
         # Generate recommendations based on ML insights
         generate_ml_based_recommendations(student_id, prediction_data)
         
         db.session.commit()
-        app.logger.info(f"Student profile updated with ML data for student {student_id}")
+        app.logger.info(f"Student profile updated with ML data for student {student_id}: {profile.learning_style}")
         
     except Exception as e:
         app.logger.error(f"Error updating student profile: {e}")
@@ -247,8 +237,8 @@ def generate_ml_based_recommendations(student_id, prediction_data):
                     'ml_category': category,
                     'confidence_score': prediction.get('correctness_score', 0)
                 }),
-                created_at=datetime.utcnow(),
-                expires_at=datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=30)
+                created_at=datetime.now(timezone.utc),
+                expires_at=(datetime.now(timezone.utc).replace(hour=23, minute=59, second=59) + timedelta(days=30))
             )
         elif category == 'Weak':
             recommendation = StudentRecommendation(
@@ -261,8 +251,8 @@ def generate_ml_based_recommendations(student_id, prediction_data):
                     'learning_material': recommendations_data.get('learning_material', ''),
                     'ml_category': category
                 }),
-                created_at=datetime.utcnow(),
-                expires_at=datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=21)
+                created_at=datetime.now(timezone.utc),
+                expires_at=(datetime.now(timezone.utc).replace(hour=23, minute=59, second=59) + timedelta(days=21))
             )
         elif category in ['Strong', 'Outstanding']:
             recommendation = StudentRecommendation(
@@ -275,8 +265,8 @@ def generate_ml_based_recommendations(student_id, prediction_data):
                     'learning_material': recommendations_data.get('learning_material', ''),
                     'ml_category': category
                 }),
-                created_at=datetime.utcnow(),
-                expires_at=datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(days=14)
+                created_at=datetime.now(timezone.utc),
+                expires_at=(datetime.now(timezone.utc).replace(hour=23, minute=59, second=59) + timedelta(days=14))
             )
         
         # Deactivate old recommendations of the same type
@@ -371,7 +361,7 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Student dashboard"""
+    """Student dashboard with ML insights"""
     student_id = session['user_id']
     student = db.session.get(Student, student_id)
     
@@ -381,9 +371,46 @@ def dashboard():
         is_completed=True
     ).order_by(QuizAttempt.completed_at.desc()).limit(5).all()
     
+    # Get ML insights
+    ml_insights = {}
+    latest_prediction = MLPrediction.query.filter_by(
+        student_id=student_id
+    ).order_by(MLPrediction.created_at.desc()).first()
+    
+    if latest_prediction:
+        ml_insights = {
+            'category': latest_prediction.category,
+            'score': latest_prediction.predicted_score,
+            'confidence': latest_prediction.confidence_level,
+            'model_version': latest_prediction.model_version,
+            'created_at': latest_prediction.created_at
+        }
+        
+        # Parse learner profile and behaviors
+        try:
+            if latest_prediction.learner_profile_json:
+                ml_insights['learner_profile'] = json.loads(latest_prediction.learner_profile_json)
+            if latest_prediction.features_json:
+                ml_insights['behaviors'] = json.loads(latest_prediction.features_json)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    
+    # Get student profile for additional insights
+    student_profile = StudentProfile.query.filter_by(student_id=student_id).first()
+    if student_profile:
+        ml_insights['learning_style'] = student_profile.learning_style
+        ml_insights['last_update'] = student_profile.last_prediction_update
+    
+    # Calculate basic stats
+    total_quizzes = len(recent_quizzes)
+    average_score = sum(q.score for q in recent_quizzes if q.score) / total_quizzes if total_quizzes > 0 else 0
+    
     return render_template('dashboard.html',
                          student=student,
-                         recent_quizzes=recent_quizzes)
+                         recent_quizzes=recent_quizzes,
+                         ml_insights=ml_insights,
+                         total_quizzes=total_quizzes,
+                         average_score=average_score)
 
 @app.route('/quiz')
 @login_required
@@ -405,7 +432,7 @@ def start_quiz(quiz_id):
     attempt = QuizAttempt(
         student_id=session['user_id'],
         quiz_id=quiz_id,
-        started_at=datetime.utcnow()
+        started_at=datetime.now(timezone.utc)
     )
     
     db.session.add(attempt)
@@ -431,7 +458,7 @@ def quiz_question(question_num):
     quiz = db.session.get(Quiz, attempt.quiz_id)
 
     # Handle questions (ensure proper slicing)
-    questions = json.loads(quiz.questions_json) if quiz.questions_json else []
+    questions = json.loads(quiz.questions_json or '[]')
 
     # Ensure question_num is within bounds
     if question_num < 1 or question_num > len(questions):
@@ -486,15 +513,25 @@ def submit_answer(question_num):
     answer = request.form.get('answer')
     confidence = request.form.get('confidence', 0.5)
     
-    # Debug logging
-    print(f"DEBUG: Question {question_num}, Answer received: '{answer}'")
-    print(f"DEBUG: Form data: {dict(request.form)}")
+    # Track timing data for ML analysis
+    current_time = datetime.now(timezone.utc)
+    timing_data = json.loads(attempt.timing_data_json or '{}')
+    
+    # Record first response time if not already set
+    if 'first_response_time' not in timing_data and question_num == 1:
+        if hasattr(attempt, 'started_at') and attempt.started_at:
+            first_response_time = (current_time - attempt.started_at).total_seconds() * 1000
+            timing_data['first_response_time'] = first_response_time
+    
+    # Update timing data
+    timing_data[f'question_{question_num}_response_time'] = current_time.isoformat()
+    attempt.timing_data_json = json.dumps(timing_data)
     
     responses = json.loads(attempt.responses_json or '{}')
     responses[f'question_{question_num}'] = {
         'answer': answer,
         'confidence': confidence,
-        'timestamp': datetime.utcnow().isoformat()
+        'timestamp': current_time.isoformat()
     }
     attempt.responses_json = json.dumps(responses)
     
@@ -502,7 +539,7 @@ def submit_answer(question_num):
     
     # Check if last question
     quiz = db.session.get(Quiz, attempt.quiz_id)
-    questions = json.loads(quiz.questions_json) if quiz.questions_json else []
+    questions = json.loads(quiz.questions_json or '[]')
     
     if question_num >= len(questions):
         return redirect(url_for('complete_quiz'))
@@ -519,14 +556,22 @@ def complete_quiz():
     attempt_id = session['current_attempt']
     attempt = db.session.get(QuizAttempt, attempt_id)
     
-    # Mark as completed
-    attempt.completed_at = datetime.utcnow()
+    # Mark as completed and record total duration
+    completion_time = datetime.now(timezone.utc)
+    attempt.completed_at = completion_time
     attempt.is_completed = True
+    
+    # Record total duration for ML analysis
+    if hasattr(attempt, 'started_at') and attempt.started_at:
+        total_duration = (completion_time - attempt.started_at).total_seconds() * 1000
+        timing_data = json.loads(attempt.timing_data_json or '{}')
+        timing_data['total_duration'] = total_duration
+        attempt.timing_data_json = json.dumps(timing_data)
     
     # Calculate score
     responses = json.loads(attempt.responses_json or '{}')
     quiz = db.session.get(Quiz, attempt.quiz_id)
-    questions = json.loads(quiz.questions_json) if quiz.questions_json else []
+    questions = json.loads(quiz.questions_json or '[]')
     
     correct_answers = 0
     detailed_analysis = []
@@ -536,28 +581,52 @@ def complete_quiz():
         user_answer = response.get('answer', '')
         
         # Get correct answer - handle different API response formats
-        correct_answer = None
-        if 'correct_answer' in question:
-            correct_answer = question['correct_answer']
+        # Determine correct answer id and text (support both formats)
+        correct_id = None
+        correct_text = None
+        if 'correct_answer' in question and question.get('correct_answer'):
+            ca = question.get('correct_answer')
+            if isinstance(ca, str) and len(ca.strip()) == 1 and ca.strip().upper() in 'ABCD':
+                correct_id = ca.strip().upper()
+            else:
+                # If correct_answer appears to be full text, try to map to an option id
+                if 'options' in question:
+                    for o in question['options']:
+                        if o.get('text') and isinstance(ca, str) and ca.strip().lower() == o.get('text').strip().lower():
+                            correct_id = o.get('id')
+                            break
+                if not correct_id:
+                    correct_text = str(ca)
         elif 'options' in question:
-            # Find correct answer from options
             for option in question['options']:
                 if option.get('is_correct', False):
-                    correct_answer = option.get('text', option.get('option_text', ''))
+                    correct_id = option.get('id')
+                    correct_text = option.get('text', option.get('option_text', ''))
                     break
-        
+
         is_correct = False
-        if correct_answer and user_answer:
-            # Handle both letter answers (A, B, C, D) and full text answers
-            if len(user_answer) == 1 and user_answer.upper() in 'ABCD':
-                # Convert letter to option text
-                option_index = ord(user_answer.upper()) - ord('A')
-                if 'options' in question and option_index < len(question['options']):
-                    user_answer_text = question['options'][option_index].get('text', question['options'][option_index].get('option_text', ''))
-                    is_correct = user_answer_text == correct_answer
+        if user_answer:
+            ua = str(user_answer).strip()
+            # If user provided a letter (A/B/C/D)
+            if len(ua) == 1 and ua.upper() in 'ABCD':
+                if correct_id:
+                    is_correct = ua.upper() == correct_id
+                else:
+                    # Fallback: map letter to option text and compare
+                    option_index = ord(ua.upper()) - ord('A')
+                    if 'options' in question and option_index < len(question['options']):
+                        user_answer_text = question['options'][option_index].get('text', '')
+                        if correct_text:
+                            is_correct = user_answer_text.strip().lower() == correct_text.strip().lower()
             else:
-                # Direct text comparison
-                is_correct = user_answer.strip().lower() == correct_answer.strip().lower()
+                # User provided full text - compare to correct_text or option text
+                if correct_text:
+                    is_correct = ua.strip().lower() == correct_text.strip().lower()
+                elif correct_id and 'options' in question:
+                    for o in question['options']:
+                        if o.get('id') == correct_id:
+                            is_correct = ua.strip().lower() == o.get('text', '').strip().lower()
+                            break
         
         if is_correct:
             correct_answers += 1
@@ -566,7 +635,7 @@ def complete_quiz():
         detailed_analysis.append({
             'question': question.get('question', question.get('question_text', f'Question {i}')),
             'user_answer': user_answer,
-            'correct_answer': correct_answer or 'Not available',
+            'correct_answer': (correct_id or correct_text) or 'Not available',
             'is_correct': is_correct,
             'confidence': 0.8  # Default confidence
         })
@@ -636,29 +705,60 @@ def generate_fallback_analysis(attempt, quiz):
     """Generate fallback question analysis if detailed analysis is not available"""
     question_analysis = []
     responses = json.loads(attempt.responses_json or '{}')
-    questions = json.loads(quiz.questions_json) if quiz.questions_json else []
+    questions = json.loads(quiz.questions_json or '[]')
     
     for i, question in enumerate(questions, 1):
         response = responses.get(f'question_{i}', {})
         user_answer = response.get('answer', 'No answer provided')
         
-        # Try to get correct answer
-        correct_answer = 'Not available'
-        if 'correct_answer' in question:
-            correct_answer = question['correct_answer']
+        # Try to determine correct answer id/text
+        correct_id = None
+        correct_text = None
+        if 'correct_answer' in question and question.get('correct_answer'):
+            ca = question.get('correct_answer')
+            if isinstance(ca, str) and len(ca.strip()) == 1 and ca.strip().upper() in 'ABCD':
+                correct_id = ca.strip().upper()
+            else:
+                # map full text to option id if possible
+                if 'options' in question:
+                    for o in question['options']:
+                        if o.get('text') and isinstance(ca, str) and ca.strip().lower() == o.get('text').strip().lower():
+                            correct_id = o.get('id')
+                            break
+                if not correct_id:
+                    correct_text = str(ca)
         elif 'options' in question:
             for option in question['options']:
                 if option.get('is_correct', False):
-                    correct_answer = option.get('text', option.get('option_text', ''))
+                    correct_id = option.get('id')
+                    correct_text = option.get('text', option.get('option_text', ''))
                     break
-        
+
         # Simple correctness check
-        is_correct = user_answer == correct_answer
+        is_correct = False
+        if isinstance(user_answer, str):
+            ua = user_answer.strip()
+            if len(ua) == 1 and ua.upper() in 'ABCD':
+                if correct_id:
+                    is_correct = ua.upper() == correct_id
+                else:
+                    # map letter to option text
+                    idx = ord(ua.upper()) - ord('A')
+                    if 'options' in question and idx < len(question['options']):
+                        is_correct = question['options'][idx].get('text', '').strip().lower() == (correct_text or '').strip().lower()
+            else:
+                if correct_text:
+                    is_correct = ua.lower() == correct_text.strip().lower()
+                elif correct_id and 'options' in question:
+                    for o in question['options']:
+                        if o.get('id') == correct_id:
+                            is_correct = ua.lower() == o.get('text', '').strip().lower()
+                            break
         
         question_analysis.append({
             'question': question.get('question', question.get('question_text', f'Question {i}')),
             'user_answer': user_answer,
-            'correct_answer': correct_answer,
+            'correct_answer': (correct_id or correct_text) or 'Not available',
             'is_correct': is_correct,
             'confidence': 0.8
         })
@@ -751,7 +851,7 @@ def generate_personalized_recommendations(attempt, quiz, question_analysis):
         return recommendation_objects
     except Exception as e:
         db.session.rollback()
-        print(f"Error saving recommendations: {e}")
+        app.logger.error(f"Error saving recommendations: {e}")
         # Return empty list if saving fails
         return []
 
@@ -763,7 +863,7 @@ def complete_recommendation(rec_id):
     
     if recommendation and recommendation.student_id == session['user_id']:
         recommendation.is_completed = True
-        recommendation.completed_at = datetime.utcnow()
+        recommendation.completed_at = datetime.now(timezone.utc)
         db.session.commit()
         flash('Recommendation marked as completed!', 'success')
     else:
@@ -773,161 +873,376 @@ def complete_recommendation(rec_id):
 
 # ===================== QUIZ GENERATION ROUTES =====================
 
-@app.route('/quiz/generate')
-@login_required
-def quiz_generation_form():
-    """Display quiz generation form"""
-    return render_template('generate_quiz.html')
+# Old quiz generation form removed - now using API-based generation
 
-@app.route('/quiz/generate', methods=['POST'])
+# Old generate_quiz function removed - now using /api/quiz-generator/generate
+
+# Old hint function removed - hints are now handled by the AI tutor
+
+# Old quiz API health endpoint removed - now using /api/quiz-generator/health
+
+@app.route('/api/ml/health')
+def ml_api_health():
+    """Check ML API health status"""
+    health = ml_api_service.check_health()
+    return jsonify(health)
+
+@app.route('/api/ml/analyze', methods=['POST'])
 @login_required
-def generate_quiz():
-    """Generate a quiz using the external API with error handling"""
+def analyze_student_behavior():
+    """Analyze student behavior using ML API"""
     try:
-        topic: str = request.form.get('topic', '')
-        difficulty: str = request.form.get('difficulty', 'medium')
-        try:
-            num_questions: int = int(request.form.get('num_questions', '5'))
-        except (ValueError, TypeError):
-            num_questions = 5
-            app.logger.warning('Invalid num_questions value, using default of 5')
+        data = request.get_json()
+        student_id = session.get('user_id')
         
-        if not topic:
-            flash('Topic is required for quiz generation')
-            return render_template('generate_quiz.html')
-    
-        # Get student behavioral data for personalization
-        student_id: int = session.get('user_id')
         if not student_id:
-            flash('Please log in to generate a quiz')
-            return redirect(url_for('login'))
-            
-        recent_attempts = QuizAttempt.query.filter_by(
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        # Get recent quiz attempt for analysis
+        recent_attempt = QuizAttempt.query.filter_by(
             student_id=student_id,
             is_completed=True
-        ).order_by(QuizAttempt.completed_at.desc()).limit(3).all()
+        ).order_by(QuizAttempt.completed_at.desc()).first()
         
-        # Analyze student behavior for API personalization
-        student_data = None
-        try:
-            if recent_attempts:
-                student_data = quiz_api.analyze_student_behavior(recent_attempts[0])
-        except Exception as e:
-            app.logger.error(f"Error analyzing student behavior: {e}")
-            # Continue without student data
-        # Extract grade level from topic if possible
-        grade_level = None
-        topic_lower = topic.lower()
-        if "grade" in topic_lower:
-            grade_level = next((str(i) for i in range(1, 13) if str(i) in topic_lower), None)
-        elif "class" in topic_lower:
-            grade_level = next((str(i) for i in range(1, 13) if str(i) in topic_lower), None)
+        if not recent_attempt:
+            return jsonify({'error': 'No quiz attempts found for analysis'}), 404
+        
+        # Extract metrics and analyze
+        session_data = {'hints_used': session.get('hints_used', 0)}
+        student_metrics = ml_api_service.extract_student_metrics(recent_attempt, session_data)
+        
+        result = ml_api_service.analyze_behavior(student_metrics)
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'analysis': result['data'],
+                'response_time': result.get('response_time', 0)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 500
+            
+    except Exception as e:
+        app.logger.error(f"Error in behavior analysis: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
-        # Generate quiz through the API (it will use CSV fallback automatically)
-        generation_result = quiz_api.generate_quiz(topic, difficulty, num_questions, student_data)
+# ===================== RAG TUTOR API ROUTES =====================
+
+@app.route('/api/ai/ask', methods=['POST'])
+@login_required
+def ask_ai_question():
+    """Direct API endpoint to ask AI tutor questions"""
+    data = request.get_json()
+    question = data.get('question')
+    
+    if not question:
+        return jsonify({'error': 'Question is required'}), 400
+    
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User not authenticated'}), 401
+    
+    # Get AI response using RAG service
+    result = rag_tutor_service.ask_question(question)
+    
+    if 'error' in result:
+        return jsonify({'error': result['error']}), 500
+    
+    # Store interaction in database
+    try:
+        interaction = AIInteraction(
+            user_id=user_id,
+            question=question,
+            answer=result.get('answer', ''),
+            video_link=result.get('videoLink'),
+            website_link=result.get('websiteLink'),
+            processing_time=result.get('processingTime'),
+            api_used=result.get('apiUsed'),
+            confidence_score=result.get('confidence_score'),
+            has_context=result.get('hasContext', False),
+            suggestions=result.get('suggestions', []),
+            context_sources=result.get('context_sources', [])
+        )
+        db.session.add(interaction)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(f"Error storing AI interaction: {e}")
+        db.session.rollback()
+    
+    return jsonify(result)
+
+@app.route('/api/ai/health')
+def rag_api_health():
+    """Check RAG tutor API health with comprehensive status"""
+    health = rag_tutor_service.check_health()
+    return jsonify(health)
+
+@app.route('/api/ai/debug')
+def rag_api_debug():
+    """Get RAG tutor API debug information"""
+    debug_info = rag_tutor_service.get_debug_info()
+    return jsonify(debug_info)
+
+@app.route('/api/ai/metrics')
+def rag_api_metrics():
+    """Get RAG tutor API metrics and performance data"""
+    metrics = rag_tutor_service.get_metrics()
+    return jsonify(metrics)
+
+@app.route('/api/ai/test')
+def rag_api_test():
+    """Test RAG tutor API connectivity"""
+    test_result = rag_tutor_service.test_connectivity()
+    return jsonify(test_result)
+
+@app.route('/api/ai/status')
+def rag_api_status():
+    """Get comprehensive RAG tutor service status"""
+    status = rag_tutor_service.get_service_status()
+    return jsonify(status)
+
+# Quiz Generator API Endpoints
+@app.route('/api/quiz-generator/health')
+def quiz_generator_health():
+    """Check Quiz Generator API health"""
+    health = quiz_generator_service.check_health()
+    return jsonify(health)
+
+@app.route('/api/quiz-generator/status')
+def quiz_generator_status():
+    """Get Quiz Generator service status"""
+    status = quiz_generator_service.get_service_status()
+    return jsonify(status)
+
+@app.route('/api/quiz-generator/metrics')
+def quiz_generator_metrics():
+    """Get Quiz Generator metrics"""
+    metrics = quiz_generator_service.get_metrics()
+    return jsonify(metrics)
+
+@app.route('/api/quiz-generator/generate', methods=['POST'])
+@login_required
+def generate_quiz_questions():
+    """Generate quiz questions using the Quiz Generator API"""
+    try:
+        data = request.get_json()
+        topics = data.get('topics', [])
+        difficulty = data.get('difficulty', 'medium')
+        n_questions = data.get('n_questions', 5)
+        question_type = data.get('type', 'mcq')
+        include_explanations = data.get('include_explanations', True)
         
-        if not generation_result.get('success'):
-            flash(generation_result.get('message', 'Failed to generate quiz'))
-            return redirect(url_for('quiz_selection'))
+        if not topics:
+            return jsonify({'error': 'Topics are required'}), 400
         
-        quiz_data = cast(Dict[str, Any], generation_result.get('quiz', {}))
+        if n_questions < 1 or n_questions > 10:
+            return jsonify({'error': 'Number of questions must be between 1 and 10'}), 400
         
-        if not isinstance(quiz_data, dict) or 'questions' not in quiz_data:
-            flash('Invalid quiz data received')
-            return redirect(url_for('quiz_selection'))
+        if difficulty not in ['easy', 'medium', 'hard']:
+            return jsonify({'error': 'Difficulty must be easy, medium, or hard'}), 400
         
+        if question_type not in ['mcq', 'short']:
+            return jsonify({'error': 'Question type must be mcq or short'}), 400
+        
+        # Get student behavior data for personalization
+        student_id = session.get('user_id')
+        student_behavior = None
+        
+        if student_id:
+            # Get recent quiz performance for personalization
+            recent_attempts = QuizAttempt.query.filter_by(
+                student_id=student_id,
+                is_completed=True
+            ).order_by(QuizAttempt.completed_at.desc()).limit(5).all()
+            
+            if recent_attempts:
+                # Calculate behavior metrics
+                total_attempts = len(recent_attempts)
+                avg_score = sum(attempt.score for attempt in recent_attempts if attempt.score) / total_attempts
+                avg_time = sum(attempt.completion_time for attempt in recent_attempts if attempt.completion_time) / total_attempts
+                
+                # Calculate behavior metrics in the format expected by the API
+                hint_count = max(1, min(5, int((100 - avg_score) / 20))) if avg_score else 2
+                bottom_hint = 1 if avg_score and avg_score < 60 else 0
+                attempt_count = max(1, min(5, int((100 - avg_score) / 25))) if avg_score else 2
+                ms_first_response = max(1000, min(10000, int(avg_time * 1000))) if avg_time else 5000
+                duration = max(300, min(3000, int(avg_time))) if avg_time else 1200
+                action_count = max(3, min(10, int(avg_score / 10))) if avg_score else 5
+                hint_dependency = max(0, min(1, (100 - avg_score) / 100)) if avg_score else 0.3
+                response_speed = max(0, min(1, avg_score / 100)) if avg_score else 0.6
+                confidence_balance = max(0, min(1, (avg_score - 30) / 70)) if avg_score else 0.5
+                engagement_ratio = max(0, min(1, avg_score / 100)) if avg_score else 0.7
+                
+                student_behavior = {
+                    "hint_count": float(hint_count),
+                    "bottom_hint": float(bottom_hint),
+                    "attempt_count": float(attempt_count),
+                    "ms_first_response": float(ms_first_response),
+                    "duration": float(duration),
+                    "action_count": float(action_count),
+                    "hint_dependency": hint_dependency,
+                    "response_speed": response_speed,
+                    "confidence_balance": confidence_balance,
+                    "engagement_ratio": engagement_ratio,
+                    "avg_score": avg_score,
+                    "avg_completion_time": avg_time
+                }
+        
+        # Generate quiz questions
+        result = quiz_generator_service.generate_quiz(
+            topics=topics,
+            difficulty=difficulty,
+            n_questions=n_questions,
+            question_type=question_type,
+            include_explanations=include_explanations,
+            student_behavior=student_behavior
+        )
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        # Store quiz generation in database for analytics
         try:
-            # Create new Quiz object with appropriate fields
-            new_quiz = Quiz()
-            new_quiz.title = str(f"{topic} Quiz - {difficulty.title()}")
-            new_quiz.description = str(f"Quiz from question bank on {topic}")
-            new_quiz.topic = str(topic)
-            new_quiz.difficulty = str(difficulty)
-            new_quiz.content_source_type = "csv"
-            new_quiz.content_source_data = json.dumps({"topic": topic, "difficulty": difficulty})
-            new_quiz.is_active = True
-            new_quiz.time_limit = 60  # Default 60 minutes
-            new_quiz.questions_json = json.dumps(quiz_data['questions'])
-            new_quiz.max_score = 100
-            
-            db.session.add(new_quiz)
+            from models import QuizGeneration
+            generation = QuizGeneration(
+                student_id=student_id,
+                topics=json.dumps(topics),
+                difficulty=difficulty,
+                question_count=n_questions,
+                question_type=question_type,
+                api_used=result.get('metadata', {}).get('api_used', 'unknown'),
+                response_time=result.get('metadata', {}).get('response_time', 0),
+                is_csv_fallback=result.get('metadata', {}).get('is_csv_fallback', False)
+            )
+            db.session.add(generation)
             db.session.commit()
-            
-            flash(f'Quiz created successfully! {len(quiz_data.get("questions", []))} questions on {topic}')
-            return redirect(url_for('start_quiz', quiz_id=new_quiz.id))
-            
         except Exception as e:
+            app.logger.error(f"Error storing quiz generation: {e}")
             db.session.rollback()
-            app.logger.error(f"Error creating quiz: {e}")
-            flash(f'Error creating quiz: {str(e)}')
-            return redirect(url_for('quiz_selection'))
+        
+        return jsonify(result)
         
     except Exception as e:
-        app.logger.error(f"Error creating quiz: {str(e)}")
-        flash(f"Failed to create quiz: {str(e)}")
-        return render_template('generate_quiz.html', 
-                             error="Failed to create quiz from question bank",
-                             topic=topic,
-                             difficulty=difficulty,
-                             num_questions=num_questions)
+        app.logger.error(f"Error generating quiz: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/quiz/hint/<int:quiz_id>/<int:question_num>')
+@app.route('/api/ai/suggestions')
 @login_required
-def get_quiz_hint(quiz_id, question_num):
-    """Get a hint for a specific quiz question"""
-    # Get current quiz attempt
-    attempt_id = session.get('current_attempt')
-    if not attempt_id:
-        return jsonify({'error': 'No active quiz attempt'}), 400
+def get_ai_suggestions():
+    """Get AI study suggestions with enhanced functionality"""
+    topic = request.args.get('topic')
+    context = request.args.get('context', '')
     
-    attempt = db.session.get(QuizAttempt, attempt_id)
-    if not attempt or attempt.quiz_id != quiz_id:
-        return jsonify({'error': 'Invalid quiz attempt'}), 400
+    if context:
+        result = rag_tutor_service.ask_with_context(
+            f"What are some good study suggestions for {topic or 'general learning'}?",
+            context
+        )
+    else:
+        result = rag_tutor_service.get_suggestions(topic)
     
-    # Get the quiz and question
-    quiz = db.session.get(Quiz, quiz_id)
-    if not quiz:
-        return jsonify({'error': 'Quiz not found'}), 404
-    
-    questions = json.loads(quiz.questions_json or '[]')
-    if question_num > len(questions):
-        return jsonify({'error': 'Question not found'}), 404
-    
-    question = questions[question_num - 1]
-    question_text = question.get('question', '')
-    
-    # Track hint usage
-    hints_used = getattr(attempt, 'hints_used', 0)
-    attempt.hints_used = hints_used + 1
-    
-    # Determine hint level (1-3 based on how many hints already used)
-    hint_level = min(3, (hints_used % 3) + 1)
-    
-    # Get student behavioral data
-    student_data = quiz_api.analyze_student_behavior(attempt)
-    
-    # Generate hint using external API
-    hint_result = quiz_api.generate_hint(
-        question_text=question_text,
-        student_data=student_data,
-        hint_level=hint_level
-    )
-    
-    # Save hint usage to database
-    db.session.commit()
-    
-    return jsonify({
-        'hint': hint_result['hint'],
-        'hint_level': hint_level,
-        'hints_used': attempt.hints_used,
-        'success': hint_result['success']
-    })
+    return jsonify(result)
 
-@app.route('/api/quiz/health')
-def quiz_api_health():
-    """Check quiz generation API health"""
-    health = quiz_api.check_api_health()
-    return jsonify(health)
+@app.route('/api/ai/resources', methods=['POST'])
+@login_required
+def get_educational_resources():
+    """Get educational resources for a specific topic"""
+    try:
+        data = request.get_json()
+        topic = data.get('topic')
+        
+        if not topic:
+            return jsonify({'error': 'Topic is required'}), 400
+        
+        result = rag_tutor_service.get_educational_resources(topic)
+        return jsonify(result)
+        
+    except Exception as e:
+        app.logger.error(f"Error getting educational resources: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/ai/ask-context', methods=['POST'])
+@login_required
+def ask_ai_with_context():
+    """Ask AI tutor with specific context"""
+    try:
+        data = request.get_json()
+        question = data.get('question')
+        context = data.get('context', '')
+        max_tokens = data.get('max_tokens', 500)
+        temperature = data.get('temperature', 0.7)
+        
+        if not question:
+            return jsonify({'error': 'Question is required'}), 400
+        
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+        
+        # Get AI response with context
+        result = rag_tutor_service.ask_with_context(question, context, max_tokens)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        # Store interaction in database
+        try:
+            interaction = AIInteraction(
+                user_id=user_id,
+                question=question,
+                answer=result.get('answer', ''),
+                video_link=result.get('videoLink'),
+                website_link=result.get('websiteLink'),
+                processing_time=result.get('processingTime'),
+                api_used=result.get('apiUsed'),
+                confidence_score=result.get('confidence_score'),
+                has_context=result.get('hasContext', False),
+                suggestions=result.get('suggestions', []),
+                context_sources=result.get('context_sources', [])
+            )
+            db.session.add(interaction)
+            db.session.commit()
+        except Exception as e:
+            app.logger.error(f"Error storing AI interaction: {e}")
+            db.session.rollback()
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        app.logger.error(f"Error in contextual AI request: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/ai/interactions')
+@login_required
+def get_ai_interactions():
+    """Get user's AI interaction history"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'User not authenticated'}), 401
+    
+    interactions = AIInteraction.query.filter_by(user_id=user_id)\
+        .order_by(AIInteraction.created_at.desc())\
+        .limit(20).all()
+    
+    interaction_data = []
+    for interaction in interactions:
+        interaction_data.append({
+            'id': interaction.id,
+            'question': interaction.question,
+            'answer': interaction.answer,
+            'video_link': interaction.video_link,
+            'website_link': interaction.website_link,
+            'processing_time': interaction.processing_time,
+            'api_used': interaction.api_used,
+            'confidence_score': interaction.confidence_score,
+            'suggestions': interaction.suggestions,
+            'created_at': interaction.created_at.isoformat()
+        })
+    
+    return jsonify({'interactions': interaction_data})
 
 # ===================== AI CHAT ROUTES =====================
 
@@ -961,9 +1276,10 @@ def chat_interface():
 @app.route('/chat/send', methods=['POST'])
 @login_required
 def send_message():
-    """Send message to external AI tutor API"""
+    """Send message to external AI tutor API with enhanced context support"""
     data = request.get_json()
     message = data.get('message')
+    context = data.get('context', '')
     session_id = data.get('session_id')
     
     if not message:
@@ -973,7 +1289,7 @@ def send_message():
     if not chat_session or chat_session.student_id != session['user_id']:
         return jsonify({'error': 'Invalid session'}), 403
     
-    # Store student message
+    # Store student message with context
     student_message = ChatMessage(
         session_id=session_id,
         sender='student',
@@ -981,26 +1297,38 @@ def send_message():
     )
     db.session.add(student_message)
     
-    # Get AI response from external API
-    ai_response = get_ai_response(message, chat_session)
+    # Get AI response from RAG tutor API with context
+    ai_response_data = get_ai_response_with_rag(message, chat_session, context)
     
     # Store AI response
     ai_message = ChatMessage(
         session_id=session_id,
         sender='ai',
-        message=ai_response
+        message=ai_response_data.get('answer', 'I apologize, but I encountered an error. Please try again.'),
+        confidence_score=ai_response_data.get('confidence_score'),
+        response_time_ms=int(ai_response_data.get('processingTime', 0) * 1000) if ai_response_data.get('processingTime') else None
     )
     db.session.add(ai_message)
     db.session.commit()
     
     return jsonify({
         'student_message': message,
-        'ai_response': ai_response,
-        'timestamp': datetime.utcnow().isoformat()
+        'context': context,
+        'ai_response': ai_response_data.get('answer', 'I apologize, but I encountered an error. Please try again.'),
+        'video_link': ai_response_data.get('videoLink'),
+        'website_link': ai_response_data.get('websiteLink'),
+        'suggestions': ai_response_data.get('suggestions', []),
+        'processing_time': ai_response_data.get('processingTime'),
+        'api_used': ai_response_data.get('apiUsed'),
+        'confidence_score': ai_response_data.get('confidence_score'),
+        'has_context': ai_response_data.get('hasContext', False),
+        'rag_context': ai_response_data.get('rag_context', ''),
+        'context_sources': ai_response_data.get('context_sources', []),
+        'timestamp': datetime.now(timezone.utc).isoformat()
     })
 
-def get_ai_response(student_message, chat_session):
-    """Generate AI tutor response using external RAG tutor chatbot API"""
+def get_ai_response_with_rag(student_message, chat_session, context=""):
+    """Generate AI tutor response using RAG tutor chatbot API with full integration"""
     try:
         # Get student context
         student = Student.query.get(chat_session.student_id)
@@ -1011,49 +1339,100 @@ def get_ai_response(student_message, chat_session):
             is_completed=True
         ).order_by(QuizAttempt.completed_at.desc()).limit(3).all()
         
-        # Prepare context for the external API
-        context = {
-            "student_name": student.name if student else "Student",
-            "recent_quiz_count": len(recent_attempts),
-            "average_score": None
-        }
-        
-        # Calculate average score if there are recent attempts
+        # Prepare enhanced context
+        enhanced_context = context
         if recent_attempts:
-            scores = [attempt.score for attempt in recent_attempts if attempt.score is not None]
-            if scores:
-                context["average_score"] = sum(scores) / len(scores)
+            recent_topics = [attempt.quiz.topic for attempt in recent_attempts if attempt.quiz and attempt.quiz.topic]
+            if recent_topics:
+                if enhanced_context:
+                    enhanced_context += f" (Recent quiz topics: {', '.join(set(recent_topics))})"
+                else:
+                    enhanced_context = f"Recent quiz topics: {', '.join(set(recent_topics))}"
         
-        # Prepare the request - the API expects 'question' not 'message'
-        params = {
-            "question": student_message
-        }
+        # Call RAG tutor service with context
+        result = rag_tutor_service.ask_question(student_message, enhanced_context)
         
-        # Call the external RAG tutor chatbot API
-        api_url = "https://rag-tutor-chatbot.onrender.com/api/chat"
+        if 'error' in result:
+            app.logger.error(f"RAG API error: {result['error']}")
+            # Return fallback response with error info
+            return {
+                'answer': f"I'm having trouble connecting to my knowledge base right now, but I'm still here to help you, {student.name if student else 'Student'}! Could you try asking your question again?",
+                'error': result['error'],
+                'videoLink': None,
+                'websiteLink': None,
+                'suggestions': [],
+                'processingTime': 0,
+                'apiUsed': 'fallback',
+                'confidence_score': 0.1
+            }
         
-        response = requests.get(
-            api_url, 
-            params=params,
-            timeout=30
-        )
+        # Store the interaction in database
+        try:
+            interaction = AIInteraction(
+                user_id=student.id,
+                question=student_message,
+                answer=result.get('answer', ''),
+                video_link=result.get('videoLink'),
+                website_link=result.get('websiteLink'),
+                processing_time=result.get('processingTime'),
+                api_used=result.get('apiUsed'),
+                confidence_score=result.get('confidence_score'),
+                has_context=result.get('hasContext', False),
+                suggestions=result.get('suggestions', []),
+                context_sources=result.get('context_sources', [])
+            )
+            db.session.add(interaction)
+            db.session.commit()
+            app.logger.info(f"Stored AI interaction for user {student.id}")
+        except Exception as e:
+            app.logger.error(f"Error storing AI interaction: {e}")
+            db.session.rollback()
         
-        if response.status_code == 200:
-            response_data = response.json()
-            # The API might return different response structure
-            return response_data.get("answer", response_data.get("response", "I'm here to help you learn! Could you please rephrase your question?"))
-        else:
-            # Fallback response if API fails
-            return f"I'm having trouble connecting to my knowledge base right now, but I'm still here to help you, {context['student_name']}! Could you try asking your question again?"
-            
-    except requests.exceptions.Timeout:
-        return "I'm taking a bit longer to think about your question. Could you please try asking again?"
-    except requests.exceptions.RequestException as e:
-        app.logger.error(f"Error calling external API: {e}")
-        return "I'm having some technical difficulties right now, but I'm still here to help! Please try your question again."
+        return result
+        
     except Exception as e:
-        app.logger.error(f"Unexpected error in get_ai_response: {e}")
-        return "I encountered an unexpected issue. Please try asking your question again!"
+        app.logger.error(f"Unexpected error in get_ai_response_with_rag: {e}")
+        return {
+            'answer': "I encountered an unexpected issue. Please try asking your question again!",
+            'error': str(e),
+            'videoLink': None,
+            'websiteLink': None,
+            'suggestions': [],
+            'processingTime': 0,
+            'apiUsed': 'error',
+            'confidence_score': 0.0
+        }
+
+@app.route('/chat/clear-history', methods=['POST'])
+@login_required
+def clear_chat_history():
+    """Clear chat history for the current session"""
+    data = request.get_json()
+    session_id = data.get('session_id')
+    
+    if not session_id:
+        return jsonify({'success': False, 'error': 'Session ID required'}), 400
+    
+    try:
+        # Verify session belongs to current user
+        chat_session = ChatSession.query.get(session_id)
+        if not chat_session or chat_session.student_id != session['user_id']:
+            return jsonify({'success': False, 'error': 'Invalid session'}), 403
+        
+        # Delete all messages in this session
+        ChatMessage.query.filter_by(session_id=session_id).delete()
+        
+        # Also clear AI interactions for this user (optional - you might want to keep these for analytics)
+        # AIInteraction.query.filter_by(user_id=session['user_id']).delete()
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Chat history cleared successfully'})
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error clearing chat history: {e}")
+        return jsonify({'success': False, 'error': 'Failed to clear chat history'}), 500
 
 @app.route('/progress')
 @login_required

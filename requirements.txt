@@ -7,5 +7,11 @@ python-dotenv==1.0.1
 requests==2.32.3
 gunicorn==23.0.0
 
+# Additional dependencies for RAG integration
+urllib3==2.5.0
+certifi==2025.8.3
+charset-normalizer==3.4.3
+idna==3.10
+
 # Production only dependencies (commented out for local development)
 # psycopg2-binary==2.9.9

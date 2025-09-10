@@ -25,10 +25,13 @@
                         </div>
                         <div class="chat-actions">
                             <button class="btn btn-outline-light btn-sm me-2" onclick="clearChat()" title="Clear Chat">
-                                <i class="fas fa-broom"></i>
+                                <i class="fas fa-broom me-1"></i>Clear
+                            </button>
+                            <button class="btn btn-outline-light btn-sm me-2" onclick="clearChatHistory()" title="Clear Chat History">
+                                <i class="fas fa-trash me-1"></i>Clear History
                             </button>
                             <button class="btn btn-outline-light btn-sm" onclick="endChat()" title="End Chat">
-                                <i class="fas fa-times"></i>
+                                <i class="fas fa-times me-1"></i>End
                             </button>
                         </div>
                     </div>
@@ -127,6 +130,19 @@
 
                     <!-- Input Area -->
                     <div class="chat-input-area border-top p-3">
+                        <!-- Context Input -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                                <input type="text" id="context-input" class="form-control" 
+                                       placeholder="Optional: Add context (e.g., 'biology study', 'math homework')" 
+                                       autocomplete="off">
+                            </div>
+                            <small class="text-muted">Adding context helps me provide more relevant answers</small>
+                        </div>
+                        
                         <div class="input-group input-group-lg">
                             <span class="input-group-text bg-light border-end-0">
                                 <i class="fas fa-edit text-muted"></i>
@@ -149,6 +165,9 @@
                             </button>
                             <button class="btn btn-outline-secondary btn-sm quick-action" onclick="sendSampleMessage('What should I study next?')">
                                 <i class="fas fa-route me-1"></i>Study Plan
+                            </button>
+                            <button class="btn btn-outline-info btn-sm quick-action" onclick="getEducationalResources()">
+                                <i class="fas fa-book me-1"></i>Resources
                             </button>
                         </div>
                     </div>
@@ -304,6 +323,52 @@
     50% { opacity: 0.5; }
 }
 
+/* Enhanced AI features */
+.ai-resource {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.ai-suggestions {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+}
+
+.suggestion-btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0.125rem;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.suggestion-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ai-metadata {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
     .message {
@@ -317,6 +382,11 @@
     .quick-action {
         font-size: 0.75rem;
         padding: 0.2rem 0.5rem;
+    }
+    
+    .suggestion-btn {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
     }
 }
 </style>
@@ -335,13 +405,16 @@ function handleKeyPress(event) {
 
 function sendMessage() {
     const messageInput = document.getElementById('message-input');
+    const contextInput = document.getElementById('context-input');
     const message = messageInput.value.trim();
+    const context = contextInput.value.trim();
     
     if (!message || isWaitingForResponse) return;
     
-    // Send the message
-    sendMessageToServer(message);
+    // Send the message with context
+    sendMessageToServer(message, context);
     messageInput.value = '';
+    contextInput.value = '';
 }
 
 function sendSampleMessage(message) {
@@ -349,7 +422,7 @@ function sendSampleMessage(message) {
     sendMessageToServer(message);
 }
 
-function sendMessageToServer(message) {
+function sendMessageToServer(message, context = '') {
     isWaitingForResponse = true;
     
     // Add user message to chat immediately
@@ -361,11 +434,13 @@ function sendMessageToServer(message) {
     // Disable input
     const sendBtn = document.getElementById('send-btn');
     const messageInput = document.getElementById('message-input');
+    const contextInput = document.getElementById('context-input');
     sendBtn.disabled = true;
     sendBtn.innerHTML = '<span class="loading-spinner me-2"></span>Sending...';
     messageInput.disabled = true;
+    contextInput.disabled = true;
     
-    // Send to server
+    // Send to server with context
     fetch('/chat/send', {
         method: 'POST',
         headers: {
@@ -373,25 +448,75 @@ function sendMessageToServer(message) {
         },
         body: JSON.stringify({
             message: message,
+            context: context,
             session_id: sessionId
         })
     })
     .then(response => response.json())
     .then(data => {
         hideTypingIndicator();
-        addMessageToChat(data.response, 'assistant');
+        addEnhancedMessageToChat(data, 'assistant');
+        
+        // Re-enable inputs
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send';
+        messageInput.disabled = false;
+        contextInput.disabled = false;
+        messageInput.focus();
     })
     .catch(error => {
         console.error('Error:', error);
         hideTypingIndicator();
         addMessageToChat('Sorry, I encountered an error. Please try again.', 'assistant');
-    })
-    .finally(() => {
-        isWaitingForResponse = false;
+        
+        // Re-enable inputs on error
+        const sendBtn = document.getElementById('send-btn');
+        const messageInput = document.getElementById('message-input');
+        const contextInput = document.getElementById('context-input');
         sendBtn.disabled = false;
         sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send';
         messageInput.disabled = false;
+        contextInput.disabled = false;
         messageInput.focus();
+    })
+    .finally(() => {
+        isWaitingForResponse = false;
+    });
+}
+
+// Function to get educational resources
+function getEducationalResources() {
+    const topic = prompt('Enter a topic to get educational resources for:');
+    if (!topic) return;
+    
+    if (isWaitingForResponse) return;
+    
+    // Show loading message
+    addMessageToChat(`Getting educational resources for "${topic}"...`, 'assistant');
+    showTypingIndicator();
+    
+    fetch('/api/ai/resources', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            topic: topic
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideTypingIndicator();
+        if (data.error) {
+            addMessageToChat(`Sorry, I couldn't get resources for "${topic}". ${data.error}`, 'assistant');
+        } else {
+            addEnhancedMessageToChat(data, 'assistant');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        hideTypingIndicator();
+        addMessageToChat('Sorry, I encountered an error while getting resources. Please try again.', 'assistant');
     });
 }
 
@@ -441,6 +566,124 @@ function addMessageToChat(message, sender) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+function addEnhancedMessageToChat(data, sender) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageWrapper = document.createElement('div');
+    const currentTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    // Hide welcome message if it exists
+    const welcomeMessage = document.querySelector('.welcome-message');
+    if (welcomeMessage) {
+        welcomeMessage.style.display = 'none';
+    }
+    
+    messageWrapper.className = `message-wrapper mb-4 ${sender === 'user' ? 'user-message' : 'ai-message'}`;
+    
+    // Build enhanced AI response with resources and suggestions
+    let enhancedContent = data.ai_response || data.answer || 'No response received';
+    
+    // Add resources if available - make them more prominent for long questions
+    let resourcesHtml = '';
+    const isLongQuestion = (data.student_message || '').length > 50;
+    
+    if (data.video_link || data.website_link) {
+        resourcesHtml = `<div class="ai-resource mt-3 p-3 bg-light rounded">
+            <h6 class="mb-2 fw-bold text-primary">
+                <i class="fas fa-book-open me-2"></i>Learning Resources
+            </h6>
+            <div class="d-flex flex-wrap gap-2">`;
+        
+        if (data.video_link) {
+            resourcesHtml += `<a href="${data.video_link}" target="_blank" class="btn btn-primary btn-sm">
+                <i class="fas fa-video me-1"></i>Watch Video Tutorial
+            </a>`;
+        }
+        if (data.website_link) {
+            resourcesHtml += `<a href="${data.website_link}" target="_blank" class="btn btn-info btn-sm">
+                <i class="fas fa-external-link-alt me-1"></i>Read More
+            </a>`;
+        }
+        
+        resourcesHtml += `</div>`;
+        
+        // Add special note for long questions
+        if (isLongQuestion) {
+            resourcesHtml += `<div class="mt-2">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    For complex topics like this, the video and website resources above provide detailed explanations.
+                </small>
+            </div>`;
+        }
+        
+        resourcesHtml += '</div>';
+    }
+    
+    // Add suggestions if available
+    let suggestionsHtml = '';
+    if (data.suggestions && data.suggestions.length > 0) {
+        suggestionsHtml = `<div class="ai-suggestions mt-3 p-3 bg-light rounded">
+            <h6 class="mb-2 fw-bold text-success">
+                <i class="fas fa-lightbulb me-2"></i>Suggested Follow-up Questions
+            </h6>
+            <div class="d-flex flex-wrap gap-2">`;
+        data.suggestions.forEach(suggestion => {
+            suggestionsHtml += `<button class="btn btn-outline-success btn-sm suggestion-btn" onclick="sendSampleMessage('${suggestion.replace(/'/g, "\\'")}')">
+                <i class="fas fa-arrow-right me-1"></i>${suggestion}
+            </button>`;
+        });
+        suggestionsHtml += '</div></div>';
+    }
+    
+    // Add metadata if available
+    let metadataHtml = '';
+    if (data.processing_time || data.api_used || data.confidence_score) {
+        metadataHtml = `<div class="ai-metadata mt-2">
+            <small class="text-muted">
+                ${data.processing_time ? `Response time: ${data.processing_time.toFixed(1)}s` : ''}
+                ${data.api_used ? ` • API: ${data.api_used}` : ''}
+                ${data.confidence_score ? ` • Confidence: ${(data.confidence_score * 100).toFixed(0)}%` : ''}
+            </small>
+        </div>`;
+    }
+    
+    messageWrapper.innerHTML = `
+        <div class="d-flex ${sender === 'user' ? 'justify-content-end' : 'justify-content-start'}">
+            ${sender !== 'user' ? `
+            <div class="avatar me-3">
+                <div class="avatar-circle ai-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+            </div>` : ''}
+            
+            <div class="message ${sender === 'user' ? 'user' : 'assistant'}">
+                <div class="message-content">
+                    ${enhancedContent}
+                    ${resourcesHtml}
+                    ${suggestionsHtml}
+                    ${metadataHtml}
+                </div>
+                <div class="message-time">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        ${currentTime}
+                    </small>
+                </div>
+            </div>
+            
+            ${sender === 'user' ? `
+            <div class="avatar ms-3">
+                <div class="avatar-circle user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+    
+    chatMessages.appendChild(messageWrapper);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 function showTypingIndicator() {
     document.getElementById('typing-indicator').style.display = 'block';
     const chatMessages = document.getElementById('chat-messages');
@@ -452,7 +695,7 @@ function hideTypingIndicator() {
 }
 
 function clearChat() {
-    if (confirm('Are you sure you want to clear the chat history?')) {
+    if (confirm('Are you sure you want to clear the current chat view?')) {
         const chatMessages = document.getElementById('chat-messages');
         chatMessages.innerHTML = `
             <div class="welcome-message text-center py-5">
@@ -464,6 +707,65 @@ function clearChat() {
             </div>
         `;
     }
+}
+
+function clearChatHistory() {
+    if (confirm('Are you sure you want to clear all chat history? This will delete all previous messages permanently.')) {
+        // Send request to clear chat history
+        fetch('/chat/clear-history', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: sessionId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Clear the chat view
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.innerHTML = `
+                    <div class="welcome-message text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-graduation-cap fa-4x text-primary opacity-50"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">Chat History Cleared!</h4>
+                        <p class="text-muted">All previous messages have been deleted. Start fresh with your AI Tutor.</p>
+                    </div>
+                `;
+                // Show success message
+                showNotification('Chat history cleared successfully!', 'success');
+            } else {
+                showNotification('Failed to clear chat history. Please try again.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Error clearing chat history. Please try again.', 'error');
+        });
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
 }
 
 function endChat() {

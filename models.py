@@ -216,6 +216,7 @@ class StudentProfile(db.Model):
     
     # Serialized learner profile from ML
     learner_profile_json = db.Column(db.Text)  # JSON string of learner profile
+    behavioral_insights_json = db.Column(db.Text)  # JSON string of behavioral insights
     
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -248,6 +249,9 @@ class MLPrediction(db.Model):
     
     # Features used for prediction
     features_json = db.Column(db.Text)  # JSON of the 15 features
+    
+    # Raw API response for debugging
+    raw_response_json = db.Column(db.Text)  # Complete API response
     
     # Metadata
     model_version = db.Column(db.String(50), default='v1.0')
@@ -495,3 +499,110 @@ class Teacher(db.Model):
     
     def __repr__(self):
         return f'<Teacher {self.name}>'
+
+# ===================== AI INTERACTION MODELS =====================
+
+class AIInteraction(db.Model):
+    """Model to store AI tutor interactions"""
+    __tablename__ = 'ai_interactions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    question = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text, nullable=False)
+    
+    # AI response metadata
+    video_link = db.Column(db.String(500))
+    website_link = db.Column(db.String(500))
+    processing_time = db.Column(db.Float)  # Response time in seconds
+    api_used = db.Column(db.String(50))  # Which API was used (Groq, etc.)
+    confidence_score = db.Column(db.Float)  # AI confidence in response (0-1)
+    has_context = db.Column(db.Boolean, default=False)
+    
+    # Additional response data
+    suggestions_json = db.Column(db.Text)  # JSON array of suggestions
+    context_sources_json = db.Column(db.Text)  # JSON array of context sources
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    user = db.relationship('Student', backref='ai_interactions')
+    
+    @property
+    def suggestions(self):
+        """Parse suggestions JSON"""
+        if self.suggestions_json:
+            try:
+                return json.loads(self.suggestions_json)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+    
+    @suggestions.setter
+    def suggestions(self, value):
+        """Store suggestions as JSON"""
+        if value:
+            self.suggestions_json = json.dumps(value)
+        else:
+            self.suggestions_json = None
+    
+    @property
+    def context_sources(self):
+        """Parse context sources JSON"""
+        if self.context_sources_json:
+            try:
+                return json.loads(self.context_sources_json)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+    
+    @context_sources.setter
+    def context_sources(self, value):
+        """Store context sources as JSON"""
+        if value:
+            self.context_sources_json = json.dumps(value)
+        else:
+            self.context_sources_json = None
+    
+    def __repr__(self):
+        return f'<AIInteraction {self.id} - User {self.user_id}: {self.question[:50]}...>'
+
+class QuizGeneration(db.Model):
+    """Model to store quiz generation requests and analytics"""
+    __tablename__ = 'quiz_generations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)  # Can be null for anonymous generations
+    topics = db.Column(db.Text, nullable=False)  # JSON string of topics
+    difficulty = db.Column(db.String(20), nullable=False)  # easy, medium, hard
+    question_count = db.Column(db.Integer, nullable=False)
+    question_type = db.Column(db.String(20), nullable=False)  # mcq, short
+    api_used = db.Column(db.String(50))  # csv_fallback, gemini, openai, etc.
+    response_time = db.Column(db.Float)  # Response time in seconds
+    is_csv_fallback = db.Column(db.Boolean, default=False)  # Whether CSV questions were used
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Relationships
+    student = db.relationship('Student', backref='quiz_generations')
+    
+    @property
+    def topics_list(self):
+        """Parse topics JSON"""
+        if self.topics:
+            try:
+                return json.loads(self.topics)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+    
+    @topics_list.setter
+    def topics_list(self, value):
+        """Store topics as JSON"""
+        if value:
+            self.topics = json.dumps(value)
+        else:
+            self.topics = json.dumps([])
+    
+    def __repr__(self):
+        return f'<QuizGeneration {self.id} - Topics: {self.topics_list}, Difficulty: {self.difficulty}>'

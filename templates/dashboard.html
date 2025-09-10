@@ -45,8 +45,230 @@
     </div>
     <div class="col-md-3">
         <div class="stats-card text-center" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
-            <div class="stats-value">{{ skill_level or "Beginner" }}</div>
-            <div class="stats-label">Skill Level</div>
+            <div class="stats-value">{{ ml_insights.learning_style or "Beginner" }}</div>
+            <div class="stats-label">Learning Style</div>
+        </div>
+    </div>
+</div>
+
+<!-- ML Insights Section -->
+{% if ml_insights %}
+<div class="row g-4 mb-5">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-brain me-2"></i>
+                    AI Learning Insights
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- Performance Category -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                {% if ml_insights.category == 'Outstanding' %}
+                                    <i class="fas fa-star text-warning" style="font-size: 2rem;"></i>
+                                {% elif ml_insights.category == 'Strong' %}
+                                    <i class="fas fa-thumbs-up text-success" style="font-size: 2rem;"></i>
+                                {% elif ml_insights.category == 'Average' %}
+                                    <i class="fas fa-chart-line text-info" style="font-size: 2rem;"></i>
+                                {% elif ml_insights.category == 'Weak' %}
+                                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                                {% else %}
+                                    <i class="fas fa-heart text-danger" style="font-size: 2rem;"></i>
+                                {% endif %}
+                            </div>
+                            <h6 class="text-muted mb-1">Performance Category</h6>
+                            <h4 class="mb-0">{{ ml_insights.category or 'Not Available' }}</h4>
+                        </div>
+                    </div>
+                    
+                    <!-- Predicted Score -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-chart-pie text-primary" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">Predicted Score</h6>
+                            <h4 class="mb-0">{{ "%.0f"|format((ml_insights.score or 0) * 100) }}%</h4>
+                            <small class="text-muted">Confidence: {{ "%.0f"|format((ml_insights.confidence or 0) * 100) }}%</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Learning Style -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <i class="fas fa-user-graduate text-success" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">Learning Style</h6>
+                            <h4 class="mb-0">{{ ml_insights.learning_style or 'Adaptive' }}</h4>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Behavioral Insights -->
+                {% if ml_insights.behaviors %}
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            Behavioral Analysis
+                        </h6>
+                        <div class="row g-3">
+                            {% for key, value in ml_insights.behaviors.items() %}
+                            <div class="col-md-3">
+                                <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                    <span class="text-capitalize">{{ key.replace('_', ' ') }}</span>
+                                    <span class="badge bg-{% if value == 'High' %}success{% elif value == 'Medium' %}warning{% else %}secondary{% endif %}">
+                                        {{ value }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Last Updated -->
+                {% if ml_insights.created_at %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            Last updated: {{ ml_insights.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- AI Services Status Section -->
+<div class="row g-4 mb-5">
+    <!-- AI Tutor Status -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot me-2"></i>
+                    AI Tutor Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-heartbeat text-success" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">API Status</h6>
+                            <span class="badge bg-success" id="api-status">Healthy</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-clock text-primary" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">Response Time</h6>
+                            <h6 class="mb-0" id="response-time">1.2s</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-brain text-info" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">AI Provider</h6>
+                            <h6 class="mb-0" id="ai-provider">Groq</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-chart-line text-warning" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">Success Rate</h6>
+                            <h6 class="mb-0" id="success-rate">98%</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="checkAITutorStatus()">
+                        <i class="fas fa-sync me-1"></i>Refresh Status
+                    </button>
+                    <button class="btn btn-outline-info btn-sm ms-2" onclick="viewAIMetrics()">
+                        <i class="fas fa-chart-bar me-1"></i>View Metrics
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quiz Generator Status -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>
+                    Quiz Generator Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-heartbeat text-success" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">API Status</h6>
+                            <span class="badge bg-success" id="quiz-api-status">Healthy</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-clock text-primary" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">Response Time</h6>
+                            <h6 class="mb-0" id="quiz-response-time">0.5s</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-database text-info" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">CSV Questions</h6>
+                            <h6 class="mb-0" id="csv-questions">15</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="mb-2">
+                                <i class="fas fa-chart-line text-warning" style="font-size: 2rem;"></i>
+                            </div>
+                            <h6 class="text-muted mb-1">Success Rate</h6>
+                            <h6 class="mb-0" id="quiz-success-rate">100%</h6>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="checkQuizGeneratorStatus()">
+                        <i class="fas fa-sync me-1"></i>Refresh Status
+                    </button>
+                    <button class="btn btn-outline-info btn-sm ms-2" onclick="viewQuizMetrics()">
+                        <i class="fas fa-chart-bar me-1"></i>View Metrics
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -103,6 +325,93 @@
                 <a href="{{ url_for('view_progress') }}" class="btn btn-info btn-lg w-100">
                     <i class="fas fa-analytics me-2"></i>View Progress
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Tutor Section -->
+<div class="row g-4 mb-5">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient text-white border-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <div class="ai-avatar me-3">
+                            <i class="fas fa-robot fa-2x"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1 fw-bold">AI Tutor Assistant</h5>
+                            <p class="mb-0 opacity-90">
+                                <span class="online-indicator"></span>
+                                Online • Ready to help with your studies
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('chat_interface') }}" class="btn btn-light btn-lg">
+                            <i class="fas fa-comments me-2"></i>Start Chat
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="ai-feature-icon mb-3">
+                                <i class="fas fa-brain fa-3x text-primary"></i>
+                            </div>
+                            <h6 class="fw-bold">Smart Responses</h6>
+                            <p class="text-muted small">Get detailed explanations with video tutorials and additional resources</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="ai-feature-icon mb-3">
+                                <i class="fas fa-lightbulb fa-3x text-warning"></i>
+                            </div>
+                            <h6 class="fw-bold">Study Suggestions</h6>
+                            <p class="text-muted small">Receive personalized study tips and follow-up questions</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="ai-feature-icon mb-3">
+                                <i class="fas fa-clock fa-3x text-success"></i>
+                            </div>
+                            <h6 class="fw-bold">24/7 Available</h6>
+                            <p class="text-muted small">Get help anytime with instant responses and confidence scores</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick AI Actions -->
+                <div class="mt-4 pt-4 border-top">
+                    <h6 class="fw-bold mb-3">Quick AI Help</h6>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-primary btn-sm w-100" onclick="askAIQuestion('Explain my last quiz results')">
+                                <i class="fas fa-chart-bar me-1"></i>Quiz Review
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-success btn-sm w-100" onclick="askAIQuestion('What should I study next?')">
+                                <i class="fas fa-route me-1"></i>Study Plan
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-info btn-sm w-100" onclick="askAIQuestion('Help me with math problems')">
+                                <i class="fas fa-calculator me-1"></i>Math Help
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-warning btn-sm w-100" onclick="askAIQuestion('Give me study tips')">
+                                <i class="fas fa-tips me-1"></i>Study Tips
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -255,6 +564,9 @@
 .bg-gradient-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
+.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 .avatar-circle {
     width: 32px;
     height: 32px;
@@ -268,5 +580,476 @@
 .bg-info-subtle {
     background-color: rgba(6, 182, 212, 0.1) !important;
 }
+.ai-avatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+.online-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    animation: pulse 2s infinite;
+}
+.ai-feature-icon {
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+.ai-feature-icon:hover {
+    opacity: 1;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
 </style>
+
+<!-- JavaScript for AI integration -->
+<script>
+function askAIQuestion(question) {
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Asking AI...';
+    button.disabled = true;
+    
+    // Send question to AI API
+    fetch('/api/ai/ask', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            question: question
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('AI Error: ' + data.error);
+        } else {
+            // Show AI response in a modal or redirect to chat
+            showAIResponse(data, question);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to get AI response. Please try again.');
+    })
+    .finally(() => {
+        // Restore button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function showAIResponse(data, question) {
+    // Create a simple modal to show the AI response
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    
+    let resourcesHtml = '';
+    if (data.videoLink) {
+        resourcesHtml += `<a href="${data.videoLink}" target="_blank" class="btn btn-outline-primary btn-sm me-2">
+            <i class="fas fa-video me-1"></i>Video Tutorial
+        </a>`;
+    }
+    if (data.websiteLink) {
+        resourcesHtml += `<a href="${data.websiteLink}" target="_blank" class="btn btn-outline-info btn-sm">
+            <i class="fas fa-external-link-alt me-1"></i>Learn More
+        </a>`;
+    }
+    
+    let suggestionsHtml = '';
+    if (data.suggestions && data.suggestions.length > 0) {
+        suggestionsHtml = `<div class="mt-3">
+            <h6>Suggested follow-up questions:</h6>
+            <div class="d-flex flex-wrap gap-1">`;
+        data.suggestions.forEach(suggestion => {
+            suggestionsHtml += `<button class="btn btn-outline-secondary btn-sm" onclick="askAIQuestion('${suggestion.replace(/'/g, "\\'")}')">
+                ${suggestion}
+            </button>`;
+        });
+        suggestionsHtml += '</div></div>';
+    }
+    
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-robot me-2"></i>AI Tutor Response
+                    </h5>
+                    <button type="button" class="btn-close" onclick="closeAIModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>Your question:</strong>
+                        <p class="text-muted">${question}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>AI Response:</strong>
+                        <p>${data.answer || data.ai_response}</p>
+                    </div>
+                    ${resourcesHtml ? `<div class="mb-3"><strong>Resources:</strong><br>${resourcesHtml}</div>` : ''}
+                    ${suggestionsHtml}
+                    ${data.processingTime ? `<small class="text-muted">Response time: ${data.processingTime.toFixed(1)}s | API: ${data.apiUsed || 'Unknown'}</small>` : ''}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAIModal()">Close</button>
+                    <a href="/chat" class="btn btn-primary">
+                        <i class="fas fa-comments me-2"></i>Continue Chat
+                    </a>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeAIModal() {
+    const modal = document.querySelector('.modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.querySelector('.modal');
+    if (modal && event.target === modal) {
+        closeAIModal();
+    }
+});
+
+// AI Tutor Status Functions
+function checkAITutorStatus() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking...';
+    button.disabled = true;
+    
+    fetch('/api/ai/health')
+        .then(response => response.json())
+        .then(data => {
+            updateAIStatus(data);
+            button.innerHTML = originalText;
+            button.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error checking AI status:', error);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            showNotification('Failed to check AI status', 'error');
+        });
+}
+
+function updateAIStatus(data) {
+    const statusElement = document.getElementById('api-status');
+    const responseTimeElement = document.getElementById('response-time');
+    const aiProviderElement = document.getElementById('ai-provider');
+    const successRateElement = document.getElementById('success-rate');
+    
+    // Update status
+    if (data.status === 'healthy') {
+        statusElement.className = 'badge bg-success';
+        statusElement.textContent = 'Healthy';
+    } else {
+        statusElement.className = 'badge bg-danger';
+        statusElement.textContent = 'Unhealthy';
+    }
+    
+    // Update response time
+    if (data.response_time) {
+        responseTimeElement.textContent = `${data.response_time.toFixed(2)}s`;
+    }
+    
+    // Update AI provider
+    if (data.details && data.details.ai_provider) {
+        aiProviderElement.textContent = data.details.ai_provider;
+    }
+    
+    // Update success rate (mock calculation)
+    if (data.local_metrics) {
+        const metrics = data.local_metrics;
+        const total = metrics.total_requests || 1;
+        const successful = metrics.successful_requests || 0;
+        const successRate = (successful / total * 100).toFixed(0);
+        successRateElement.textContent = `${successRate}%`;
+    }
+}
+
+function viewAIMetrics() {
+    fetch('/api/ai/metrics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showMetricsModal(data);
+            } else {
+                showNotification('Failed to load metrics', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading metrics:', error);
+            showNotification('Failed to load metrics', 'error');
+        });
+}
+
+function showMetricsModal(data) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-chart-bar me-2"></i>AI Tutor Metrics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Local Metrics</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Total Requests:</span>
+                                        <strong>${data.local_metrics?.total_requests || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Successful:</span>
+                                        <strong class="text-success">${data.local_metrics?.successful_requests || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Failed:</span>
+                                        <strong class="text-danger">${data.local_metrics?.failed_requests || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Cache Hits:</span>
+                                        <strong class="text-info">${data.local_metrics?.cache_hits || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Avg Response Time:</span>
+                                        <strong>${(data.local_metrics?.average_response_time || 0).toFixed(2)}s</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">API Metrics</h6>
+                                </div>
+                                <div class="card-body">
+                                    ${data.api_metrics ? `
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Request Count:</span>
+                                            <strong>${data.api_metrics.request_count || 0}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Cache Hit Rate:</span>
+                                            <strong>${data.api_metrics.cache_hit_rate || '0%'}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Avg Response Time:</span>
+                                            <strong>${data.api_metrics.avg_response_time || '0.00'}s</strong>
+                                        </div>
+                                    ` : '<p class="text-muted">No API metrics available</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', () => {
+        document.body.removeChild(modal);
+    });
+}
+
+// Quiz Generator Status Functions
+function checkQuizGeneratorStatus() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking...';
+    button.disabled = true;
+    
+    fetch('/api/quiz-generator/health')
+        .then(response => response.json())
+        .then(data => {
+            updateQuizGeneratorStatus(data);
+            button.innerHTML = originalText;
+            button.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error checking quiz generator status:', error);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            showNotification('Failed to check quiz generator status', 'error');
+        });
+}
+
+function updateQuizGeneratorStatus(data) {
+    const statusElement = document.getElementById('quiz-api-status');
+    const responseTimeElement = document.getElementById('quiz-response-time');
+    const csvQuestionsElement = document.getElementById('csv-questions');
+    const successRateElement = document.getElementById('quiz-success-rate');
+    
+    // Update status
+    if (data.status === 'healthy') {
+        statusElement.className = 'badge bg-success';
+        statusElement.textContent = 'Healthy';
+    } else {
+        statusElement.className = 'badge bg-danger';
+        statusElement.textContent = 'Unhealthy';
+    }
+    
+    // Update response time
+    if (data.response_time) {
+        responseTimeElement.textContent = `${data.response_time.toFixed(2)}s`;
+    }
+    
+    // Update CSV questions count
+    if (data.local_metrics && data.local_metrics.csv_subjects) {
+        csvQuestionsElement.textContent = data.local_metrics.csv_subjects.length || 15;
+    }
+    
+    // Update success rate
+    if (data.local_metrics) {
+        const metrics = data.local_metrics;
+        const total = metrics.total_requests || 1;
+        const successful = metrics.successful_requests || 0;
+        const successRate = (successful / total * 100).toFixed(0);
+        successRateElement.textContent = `${successRate}%`;
+    }
+}
+
+function viewQuizMetrics() {
+    fetch('/api/quiz-generator/metrics')
+        .then(response => response.json())
+        .then(data => {
+            showQuizMetricsModal(data);
+        })
+        .catch(error => {
+            console.error('Error loading quiz metrics:', error);
+            showNotification('Failed to load quiz metrics', 'error');
+        });
+}
+
+function showQuizMetricsModal(data) {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-chart-bar me-2"></i>Quiz Generator Metrics
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Performance Metrics</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Total Requests:</span>
+                                        <strong>${data.total_requests || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Successful:</span>
+                                        <strong class="text-success">${data.successful_requests || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Failed:</span>
+                                        <strong class="text-danger">${data.failed_requests || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Cache Hits:</span>
+                                        <strong class="text-info">${data.cache_hits || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Avg Response Time:</span>
+                                        <strong>${(data.average_response_time || 0).toFixed(2)}s</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0">Question Sources</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>CSV Questions:</span>
+                                        <strong class="text-success">${data.csv_questions || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>AI Questions:</span>
+                                        <strong class="text-primary">${data.ai_questions || 0}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>CSV Ratio:</span>
+                                        <strong>${data.csv_ratio || '0%'}</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Cache Hit Rate:</span>
+                                        <strong>${data.cache_hit_rate || '0%'}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', () => {
+        document.body.removeChild(modal);
+    });
+}
+
+// Load AI status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkAITutorStatus();
+    checkQuizGeneratorStatus();
+});
+</script>
 {% endblock %}
