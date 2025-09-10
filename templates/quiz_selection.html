@@ -10,7 +10,7 @@
                 <h2 class="mb-0">
                     <i class="fas fa-list"></i> Available Quizzes
                 </h2>
-                <a href="{{ url_for('quiz_generation_form') }}" class="btn btn-success">
+                <a href="{{ url_for('generate_quiz_questions') }}" class="btn btn-success">
                     <i class="fas fa-magic"></i> 🤖 Generate AI Quiz
                 </a>
             </div>
@@ -155,7 +155,7 @@
                     <p class="text-muted mb-4">
                         There are no active quizzes at the moment. 
                         {% if session.get('is_teacher') %}
-                        <a href="{{ url_for('create_quiz') }}" class="btn btn-primary">
+                        <a href="{{ url_for('generate_quiz_questions') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Create Your First Quiz
                         </a>
                         {% else %}
