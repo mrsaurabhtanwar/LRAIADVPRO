@@ -1682,13 +1682,17 @@ def view_progress():
             "Use the chat feature if you need help with any topics"
         ]
 
+    # Prepare chart data (only scores for JSON serialization)
+    chart_data = [{'score': attempt.score or 0, 'date': attempt.completed_at.strftime('%Y-%m-%d') if attempt.completed_at else ''} for attempt in attempts]
+    
     return render_template('progress.html',
                          student=student,
                          attempts=attempts,
                          total_quizzes=total_quizzes,
                          average_score=average_score,
                          progress_trend=progress_trend,
-                         current_recommendations=current_recommendations)
+                         current_recommendations=current_recommendations,
+                         chart_data=chart_data)
 
 @app.route('/student_profile')
 @login_required  

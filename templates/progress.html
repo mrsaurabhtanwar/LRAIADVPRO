@@ -344,9 +344,9 @@ function initializePerformanceChart() {
     if (!ctx) return;
     
     // Prepare chart data
-    const attempts = {{ attempts|tojson if attempts else '[]' }};
-    const labels = attempts.map((attempt, index) => `Quiz ${index + 1}`);
-    const scores = attempts.map(attempt => attempt.score);
+    const chartData = {{ chart_data|tojson if chart_data else '[]' }};
+    const labels = chartData.map((data, index) => `Quiz ${index + 1}`);
+    const scores = chartData.map(data => data.score);
     
     new Chart(ctx, {
         type: 'line',
@@ -455,5 +455,4 @@ function showDetails(attemptId) {
     window.location.href = `/quiz/results/${attemptId}`;
 }
 </script>
-{% endif %}
 {% endblock %}
