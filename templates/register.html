@@ -3,41 +3,232 @@
 {% block title %}Register - Educational Platform{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0"><i class="fas fa-user-plus"></i> Student Registration</h4>
+<!-- Registration Page with Enhanced UI -->
+<div class="min-vh-100 d-flex align-items-center py-5" style="background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <!-- Registration Card -->
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-5">
+                        <!-- Logo/Brand -->
+                        <div class="text-center mb-4">
+                            <div class="register-logo mb-3">
+                                <i class="fas fa-user-plus fa-3x text-primary"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-2">Join EduPlatform</h3>
+                            <p class="text-muted">Create your account to start learning</p>
+                        </div>
+
+                        <!-- Registration Form -->
+                        <form method="POST" class="register-form">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="name" name="name" placeholder="John Doe" required>
+                                <label for="name">
+                                    <i class="fas fa-user me-2"></i>Full Name
+                                </label>
+                            </div>
+                            
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="student_id" name="student_id" placeholder="STU001" required>
+                                <label for="student_id">
+                                    <i class="fas fa-id-card me-2"></i>Student ID
+                                </label>
+                            </div>
+                            
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="class" name="class" placeholder="Grade 10" required>
+                                <label for="class">
+                                    <i class="fas fa-graduation-cap me-2"></i>Class/Grade
+                                </label>
+                            </div>
+                            
+                            <div class="form-floating mb-3">
+                                <input type="email" class="form-control" id="email" name="email" placeholder="name@example.com" required>
+                                <label for="email">
+                                    <i class="fas fa-envelope me-2"></i>Email Address
+                                </label>
+                            </div>
+                            
+                            <div class="form-floating mb-4">
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                <label for="password">
+                                    <i class="fas fa-lock me-2"></i>Password
+                                </label>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                    <label class="form-check-label text-sm" for="agreeTerms">
+                                        I agree to the <a href="#" class="text-decoration-none">Terms & Conditions</a>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 btn-lg mb-3" id="registerBtn">
+                                <i class="fas fa-user-plus me-2"></i>Create Account
+                            </button>
+                        </form>
+
+                        <!-- Divider -->
+                        <div class="text-center mb-4">
+                            <hr class="my-3">
+                            <span class="text-muted small bg-white px-3">Already have an account?</span>
+                        </div>
+
+                        <!-- Login Link -->
+                        <div class="text-center">
+                            <a href="{{ url_for('login') }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="text-center mt-4">
+                    <p class="text-muted small">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Your data is protected with enterprise-grade security
+                    </p>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
+
+            <!-- Features Column (Hidden on mobile) -->
+            <div class="col-lg-6 d-none d-lg-block">
+                <div class="ps-5">
+                    <h1 class="display-4 fw-bold text-dark mb-4">
+                        Start Your Learning Journey
+                    </h1>
+                    <p class="lead text-muted mb-5">
+                        Join thousands of students who are already using AI-powered learning to achieve their academic goals.
+                    </p>
+                    
+                    <!-- Feature List -->
+                    <div class="row g-4">
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-rocket fa-2x text-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Get Started Fast</h6>
+                                    <p class="text-muted small">Quick registration and immediate access to all features</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-chart-line fa-2x text-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Track Progress</h6>
+                                    <p class="text-muted small">Monitor your learning journey with detailed analytics</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-users fa-2x text-info"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Join Community</h6>
+                                    <p class="text-muted small">Connect with fellow learners and share experiences</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="d-flex align-items-start">
+                                <div class="feature-icon me-3">
+                                    <i class="fas fa-mobile-alt fa-2x text-warning"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Learn Anywhere</h6>
+                                    <p class="text-muted small">Access your learning materials on any device</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="student_id" class="form-label">Student ID</label>
-                        <input type="text" class="form-control" id="student_id" name="student_id" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="class" class="form-label">Class/Grade</label>
-                        <input type="text" class="form-control" id="class" name="class" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Register</button>
-                </form>
-                <div class="text-center mt-3">
-                    <a href="{{ url_for('login') }}">Already have an account? Login here</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Enhanced Styles -->
+<style>
+.register-logo {
+    animation: bounceIn 1s ease-out;
+}
+
+@keyframes bounceIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.form-floating > label {
+    color: #6b7280;
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: var(--bs-primary);
+}
+
+.feature-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+
+/* Loading state for form */
+.register-form.loading .form-control {
+    opacity: 0.7;
+    pointer-events: none;
+}
+</style>
+
+<!-- Enhanced JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.register-form');
+    const registerBtn = document.getElementById('registerBtn');
+    
+    // Form submission enhancement
+    form.addEventListener('submit', function() {
+        registerBtn.innerHTML = '<span class="loading-spinner me-2"></span>Creating account...';
+        registerBtn.disabled = true;
+        form.classList.add('loading');
+    });
+    
+    // Enhanced form validation
+    const inputs = form.querySelectorAll('input[required]');
+    
+    inputs.forEach(input => {
+        input.addEventListener('invalid', function() {
+            this.classList.add('is-invalid');
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.validity.valid) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class MLAPIService:
     """Service class for interacting with the ML Performance Prediction API"""
     
-    def __init__(self, base_url: str = "https://ml-api-pz1u.onrender.com"):
+    def __init__(self, base_url: str = "https://ml-api-1-o3jm.onrender.com"):
         self.base_url = base_url
         self.timeout = 30  # Increased timeout for cold starts
         self.retry_attempts = 3
@@ -246,7 +246,16 @@ class MLAPIService:
             duration_ms = 300000  # Default 5 minutes
             if hasattr(quiz_attempt, 'started_at') and hasattr(quiz_attempt, 'completed_at'):
                 if quiz_attempt.started_at and quiz_attempt.completed_at:
-                    duration = (quiz_attempt.completed_at - quiz_attempt.started_at).total_seconds()
+                    # Ensure both datetimes are timezone-aware for comparison
+                    started_at = quiz_attempt.started_at
+                    completed_at = quiz_attempt.completed_at
+                    
+                    if started_at.tzinfo is None:
+                        started_at = started_at.replace(tzinfo=timezone.utc)
+                    if completed_at.tzinfo is None:
+                        completed_at = completed_at.replace(tzinfo=timezone.utc)
+                    
+                    duration = (completed_at - started_at).total_seconds()
                     duration_ms = int(duration * 1000)
             elif timing_data:
                 duration_ms = int(timing_data.get('total_duration', 300000))

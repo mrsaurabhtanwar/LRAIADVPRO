@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block title %}Generate AI Quiz - Educational Platform{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold text-primary">
+                    <i class="fas fa-magic me-3"></i>Generate AI Quiz
+                </h1>
+                <p class="lead text-muted">Create personalized quizzes using AI technology</p>
+            </div>
+
+            <!-- Quiz Generation Form -->
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Quiz Configuration
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <form id="quiz-generation-form">
+                        <!-- Subject Selection -->
+                        <div class="mb-4">
+                            <label for="subject-select" class="form-label fw-semibold">
+                                <i class="fas fa-book me-2"></i>Subject
+                            </label>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <select class="form-select" id="subject-select" required>
+                                        <option value="">Select a subject...</option>
+                                        <option value="Mathematics">Mathematics</option>
+                                        <option value="Physics">Physics</option>
+                                        <option value="Chemistry">Chemistry</option>
+                                        <option value="Biology">Biology</option>
+                                        <option value="Computer Science">Computer Science</option>
+                                        <option value="Artificial Intelligence">Artificial Intelligence</option>
+                                        <option value="Data Science">Data Science</option>
+                                        <option value="Astronomy">Astronomy</option>
+                                        <option value="Cybersecurity">Cybersecurity</option>
+                                        <option value="English">English</option>
+                                        <option value="Quantum Physics">Quantum Physics</option>
+                                        <option value="Robotics">Robotics</option>
+                                    </select>
+                                    <div class="form-text">Choose a subject for your quiz</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-outline-primary" id="refresh-subjects">
+                                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Difficulty -->
+                        <div class="mb-4">
+                            <label for="difficulty" class="form-label fw-semibold">
+                                <i class="fas fa-chart-line me-2"></i>Difficulty Level
+                            </label>
+                            <select class="form-select" id="difficulty" name="difficulty">
+                                <option value="easy">Easy</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+
+                        <!-- Number of Questions -->
+                        <div class="mb-4">
+                            <label for="n_questions" class="form-label fw-semibold">
+                                <i class="fas fa-list-ol me-2"></i>Number of Questions
+                            </label>
+                            <select class="form-select" id="n_questions" name="n_questions">
+                                <option value="3">3 Questions</option>
+                                <option value="5" selected>5 Questions</option>
+                                <option value="10">10 Questions</option>
+                                <option value="15">15 Questions</option>
+                            </select>
+                        </div>
+
+                        <!-- Question Type -->
+                        <div class="mb-4">
+                            <label for="type" class="form-label fw-semibold">
+                                <i class="fas fa-question-circle me-2"></i>Question Type
+                            </label>
+                            <select class="form-select" id="type" name="type">
+                                <option value="mcq" selected>Multiple Choice</option>
+                                <option value="short">Short Answer</option>
+                            </select>
+                        </div>
+
+                        <!-- Include Explanations -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="include_explanations" 
+                                       name="include_explanations" checked>
+                                <label class="form-check-label fw-semibold" for="include_explanations">
+                                    <i class="fas fa-lightbulb me-2"></i>Include Detailed Explanations
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-outline-secondary me-md-2" onclick="history.back()">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                                <i class="fas fa-magic me-2"></i>Generate Quiz
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading-spinner" class="text-center mt-4" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Generating quiz...</span>
+                </div>
+                <p class="mt-2 text-muted">AI is generating your personalized quiz...</p>
+            </div>
+
+            <!-- Results -->
+            <div id="quiz-results" class="mt-4" style="display: none;">
+                <!-- Quiz results will be displayed here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load subjects on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkQuizGeneratorStatus();
+    
+    // Add refresh button event listener
+    document.getElementById('refresh-subjects').addEventListener('click', function() {
+        // For now, just reload the page to refresh the dropdown
+        location.reload();
+    });
+});
+
+async function checkQuizGeneratorStatus() {
+    try {
+        const response = await fetch('/api/quiz-generator/health');
+        const data = await response.json();
+        
+        const statusDiv = document.createElement('div');
+        statusDiv.className = 'alert alert-info alert-dismissible fade show';
+        statusDiv.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Quiz Generator Status:</strong> ${data.status || 'Unknown'}
+            ${data.api_url ? `<br><small>API URL: ${data.api_url}</small>` : ''}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insert status at the top of the form
+        const form = document.getElementById('quiz-generation-form');
+        form.parentNode.insertBefore(statusDiv, form);
+        
+    } catch (error) {
+        console.log('Could not check quiz generator status:', error);
+    }
+}
+
+function getSelectedSubject() {
+    const subjectSelect = document.getElementById('subject-select');
+    const selectedSubject = subjectSelect.value;
+    
+    if (!selectedSubject) {
+        return null;
+    }
+    
+    return [selectedSubject]; // Return as array to match the API expectation
+}
+
+document.getElementById('quiz-generation-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const topics = getSelectedSubject();
+    
+    if (!topics || topics.length === 0) {
+        alert('Please select a subject for your quiz.');
+        return;
+    }
+    
+    const formData = new FormData(e.target);
+    const data = {
+        topics: topics,
+        difficulty: formData.get('difficulty'),
+        n_questions: parseInt(formData.get('n_questions')),
+        type: formData.get('type'),
+        include_explanations: formData.get('include_explanations') === 'on'
+    };
+
+    // Show loading spinner
+    document.getElementById('loading-spinner').style.display = 'block';
+    document.getElementById('generate-btn').disabled = true;
+    document.getElementById('quiz-results').style.display = 'none';
+
+    try {
+        const response = await fetch('/api/quiz-generator/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        
+        // Debug logging
+        console.log('Quiz generation response:', result);
+        console.log('Response status:', response.status);
+        console.log('Questions in result:', result.questions);
+
+        if (response.ok) {
+            // Check if we have questions
+            if (result.questions && result.questions.length > 0) {
+                displayQuizResults(result);
+            } else {
+                throw new Error('No questions were generated. Please try different topics or check if the quiz generator service is running.');
+            }
+        } else {
+            throw new Error(result.error || 'Failed to generate quiz');
+        }
+    } catch (error) {
+        console.error('Error generating quiz:', error);
+        
+        // Show detailed error in the results area
+        const resultsDiv = document.getElementById('quiz-results');
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>Quiz Generation Failed</h5>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <hr>
+                <h6>Possible Solutions:</h6>
+                <ul>
+                    <li>Make sure the quiz generator service is running</li>
+                    <li>Try a different subject (Mathematics, Physics, etc.)</li>
+                    <li>Check your internet connection</li>
+                    <li>Try reducing the number of questions</li>
+                </ul>
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary" onclick="location.reload()">
+                        <i class="fas fa-refresh me-1"></i>Try Again
+                    </button>
+                </div>
+            </div>
+        `;
+        resultsDiv.style.display = 'block';
+    } finally {
+        // Hide loading spinner
+        document.getElementById('loading-spinner').style.display = 'none';
+        document.getElementById('generate-btn').disabled = false;
+    }
+});
+
+function displayQuizResults(result) {
+    const resultsDiv = document.getElementById('quiz-results');
+    
+    // Debug logging
+    console.log('displayQuizResults called with:', result);
+    console.log('Questions array:', result.questions);
+    console.log('Questions length:', result.questions ? result.questions.length : 'undefined');
+    
+    if (result.questions && result.questions.length > 0) {
+        let html = `
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Quiz Generated Successfully!
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Topics:</strong> ${result.topics ? result.topics.join(', ') : 'N/A'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Difficulty:</strong> ${result.difficulty || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Questions:</strong> ${result.questions.length}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Type:</strong> ${result.type || 'N/A'}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>API Used:</strong> ${result.apiUsed || 'N/A'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Processing Time:</strong> ${result.processingTime || 'N/A'}s
+                        </div>
+                    </div>
+        `;
+
+        // Add questions
+        result.questions.forEach((question, index) => {
+            console.log(`Processing question ${index + 1}:`, question);
+            
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Question ${index + 1}</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="fw-semibold">${question.question || 'No question text available'}</p>
+            `;
+            
+            // Handle different question types
+            if (question.type === 'mcq' && question.options && question.options.length > 0) {
+                html += `<ul class="list-unstyled">`;
+                question.options.forEach((option, optIndex) => {
+                    html += `<li>${String.fromCharCode(65 + optIndex)}. ${option}</li>`;
+                });
+                html += `</ul>`;
+            } else if (question.type === 'short') {
+                html += `<p class="text-muted"><em>Short answer question</em></p>`;
+            } else {
+                html += `<p class="text-warning"><em>Question format not recognized</em></p>`;
+            }
+            
+            html += `
+                        <div class="mt-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="toggleAnswer(${index})" id="toggle-btn-${index}">
+                                <i class="fas fa-eye me-1"></i>Show Answer
+                            </button>
+                            <div id="answer-${index}" class="mt-2" style="display: none;">
+                                <strong class="text-success">Correct Answer:</strong> ${question.correct_answer || 'No answer available'}
+                            </div>
+                        </div>
+            `;
+            
+            if (question.explanation) {
+                html += `
+                        <div class="mt-2">
+                            <strong>Explanation:</strong> ${question.explanation}
+                        </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button class="btn btn-outline-secondary me-md-2" onclick="history.back()">
+                            <i class="fas fa-arrow-left me-2"></i>Back
+                        </button>
+                        <button class="btn btn-primary me-md-2" onclick="takeQuiz()" id="take-quiz-btn" style="display: none;">
+                            <i class="fas fa-play me-2"></i>Take Quiz
+                        </button>
+                        <button class="btn btn-success" onclick="location.reload()">
+                            <i class="fas fa-plus me-2"></i>Generate Another Quiz
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        resultsDiv.innerHTML = html;
+        
+        // Show Take Quiz button if quiz was created
+        if (result.quiz_id && result.quiz_url) {
+            document.getElementById('take-quiz-btn').style.display = 'inline-block';
+            window.generatedQuizUrl = result.quiz_url;
+            
+            // Add redirect message
+            const redirectMessage = document.createElement('div');
+            redirectMessage.className = 'alert alert-info mt-3';
+            redirectMessage.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Quiz Generated Successfully!</strong> 
+                Redirecting to quiz in <span id="countdown">2</span> seconds...
+                <div class="mt-2">
+                    <button class="btn btn-primary btn-sm" onclick="window.location.href='${result.quiz_url}'">
+                        <i class="fas fa-play me-1"></i>Start Quiz Now
+                    </button>
+                </div>
+            `;
+            resultsDiv.appendChild(redirectMessage);
+            
+            // Countdown timer
+            let countdown = 2;
+            const countdownElement = document.getElementById('countdown');
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdownElement) {
+                    countdownElement.textContent = countdown;
+                }
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    window.location.href = result.quiz_url;
+                }
+            }, 1000);
+        }
+    } else {
+        // Debug: Show what we actually received
+        console.log('No questions found in result. Full result:', result);
+        
+        resultsDiv.innerHTML = `
+            <div class="alert alert-warning" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <h5>No questions were generated</h5>
+                <p><strong>Debug Info:</strong></p>
+                <ul>
+                    <li>Result keys: ${Object.keys(result).join(', ')}</li>
+                    <li>Questions property: ${result.questions ? 'exists' : 'missing'}</li>
+                    <li>Questions length: ${result.questions ? result.questions.length : 'N/A'}</li>
+                    <li>API Used: ${result.apiUsed || 'N/A'}</li>
+                </ul>
+                <p>Please try again with a different subject or check the console for more details.</p>
+                <div class="mt-3">
+                    <button class="btn btn-outline-primary" onclick="location.reload()">
+                        <i class="fas fa-refresh me-1"></i>Try Again
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    resultsDiv.style.display = 'block';
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+}
+
+function toggleAnswer(questionIndex) {
+    const answerDiv = document.getElementById(`answer-${questionIndex}`);
+    const toggleBtn = document.getElementById(`toggle-btn-${questionIndex}`);
+    
+    if (answerDiv.style.display === 'none') {
+        answerDiv.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Answer';
+    } else {
+        answerDiv.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Show Answer';
+    }
+}
+
+function takeQuiz() {
+    if (window.generatedQuizUrl) {
+        window.location.href = window.generatedQuizUrl;
+    } else {
+        alert('Quiz URL not available. Please try generating the quiz again.');
+    }
+}
+</script>
+{% endblock %}

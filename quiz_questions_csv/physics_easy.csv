@@ -1,0 +1,6 @@
+question,options,correct_answer,answer_index,explanation
+What is the unit of force in the International System of Units (SI)?,"[""Joule"", ""Newton"", ""Watt"", ""Pascal""]",Newton,1,Force is measured in Newtons (N) in the SI system.
+What is the acceleration due to gravity on Earth?,"[""9.8 m/s²"", ""10 m/s²"", ""8.9 m/s²"", ""11 m/s²""]",9.8 m/s²,0,The standard acceleration due to gravity on Earth is approximately 9.8 m/s².
+What is the formula for kinetic energy?,"[""KE = mv"", ""KE = ½mv²"", ""KE = mgh"", ""KE = Fd""]",KE = ½mv²,1,Kinetic energy is calculated as half the mass times velocity squared: KE = ½mv².
+What is the speed of light in a vacuum?,"[""3 × 10⁸ m/s"", ""3 × 10⁶ m/s"", ""3 × 10⁹ m/s"", ""3 × 10¹⁰ m/s""]",3 × 10⁸ m/s,0,The speed of light in a vacuum is approximately 3 × 10⁸ meters per second.
+What is the first law of motion?,"[""F = ma"", ""An object at rest stays at rest"", ""Every action has an equal reaction"", ""Energy cannot be created or destroyed""]",An object at rest stays at rest,1,Newton's first law states that an object at rest stays at rest and an object in motion stays in motion unless acted upon by an external force.

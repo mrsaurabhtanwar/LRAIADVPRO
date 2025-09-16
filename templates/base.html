@@ -12,14 +12,25 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.js" onerror="console.log('Chart.js failed to load')"></script>
     <!-- MathJax -->
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" onerror="console.log('MathJax failed to load')"></script>
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
     
     {% block extra_head %}{% endblock %}
+    
+    <!-- Global Error Handler -->
+    <script>
+        window.addEventListener('error', function(e) {
+            console.log('JavaScript Error:', e.message);
+            // Don't let external script errors break the page
+            if (e.filename && e.filename.includes('polyfill')) {
+                e.preventDefault();
+                console.log('Polyfill error ignored');
+            }
+        });
+    </script>
 </head>
 <body>
     <!-- Enhanced Navigation -->
@@ -48,12 +59,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center" href="{{ url_for('chat') }}">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('chat_interface') }}">
                             <i class="fas fa-robot me-1"></i> AI Tutor
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link d-flex align-items-center" href="{{ url_for('progress') }}">
+                        <a class="nav-link d-flex align-items-center" href="{{ url_for('view_progress') }}">
                             <i class="fas fa-chart-line me-1"></i> Progress
                         </a>
                     </li>

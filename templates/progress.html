@@ -3,31 +3,50 @@
 {% block title %}My Progress - Educational Platform{% endblock %}
 
 {% block content %}
-<div class="row">
+<!-- Enhanced Progress Page -->
+<div class="row mb-4">
     <div class="col-12">
-        <h2>Your Learning Progress</h2>
-        <p class="text-muted">Track your performance and follow personalized recommendations</p>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-6 fw-bold text-dark mb-2">
+                    <i class="fas fa-chart-line me-3 text-primary"></i>My Learning Progress
+                </h1>
+                <p class="text-muted mb-0">Track your performance and follow personalized recommendations</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary" onclick="refreshProgress()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Take Quiz
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="row g-4">
-    <!-- Progress Overview -->
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body text-center">
-                <h5 class="card-title">Overall Progress</h5>
+<!-- Progress Stats Cards -->
+<div class="row g-4 mb-5">
+    <!-- Overall Progress -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-trophy fa-3x text-warning"></i>
+                </div>
+                <h5 class="card-title text-muted mb-3">Overall Progress</h5>
                 <div class="progress-circle mb-3">
                     {% if attempts %}
                     <h3 class="text-primary">{{ "%.1f"|format(attempts[0].score if attempts else 0) }}%</h3>
-                    <p class="text-muted">Latest Score</p>
+                    <p class="text-muted small">Latest Score</p>
                     {% else %}
                     <h3 class="text-muted">No Data</h3>
-                    <p class="text-muted">Take your first quiz!</p>
+                    <p class="text-muted small">Take your first quiz!</p>
                     {% endif %}
                 </div>
                 {% if progress_trend != 0 %}
-                <span class="badge bg-{{ 'success' if progress_trend > 0 else 'warning' }}">
-                    <i class="fas fa-{{ 'arrow-up' if progress_trend > 0 else 'arrow-down' }}"></i>
+                <span class="badge bg-{{ 'success' if progress_trend > 0 else 'warning' }} performance-badge">
+                    <i class="fas fa-{{ 'arrow-up' if progress_trend > 0 else 'arrow-down' }} me-1"></i>
                     {{ "%.1f"|format(abs(progress_trend)) }}% {{ 'improvement' if progress_trend > 0 else 'change' }}
                 </span>
                 {% endif %}
@@ -35,32 +54,125 @@
         </div>
     </div>
 
-    <!-- Current Recommendations -->
+    <!-- Quizzes Completed -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-check-circle fa-3x text-success"></i>
+                </div>
+                <h5 class="card-title text-muted mb-3">Quizzes Completed</h5>
+                <h2 class="text-success mb-2">{{ attempts|length if attempts else 0 }}</h2>
+                <p class="text-muted small mb-0">Total attempts</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Score -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-chart-pie fa-3x text-info"></i>
+                </div>
+                <h5 class="card-title text-muted mb-3">Average Score</h5>
+                <h2 class="text-info mb-2">
+                    {% if attempts %}
+                        {{ "%.1f"|format((attempts|sum(attribute='score') / attempts|length)) }}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </h2>
+                <p class="text-muted small mb-0">Across all quizzes</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Study Streak -->
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3">
+                    <i class="fas fa-fire fa-3x text-danger"></i>
+                </div>
+                <h5 class="card-title text-muted mb-3">Study Streak</h5>
+                <h2 class="text-danger mb-2">{{ study_streak or 0 }}</h2>
+                <p class="text-muted small mb-0">Days in a row</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts and Analytics -->
+<div class="row g-4 mb-5">
+    <!-- Performance Chart -->
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Personalized Recommendations</h5>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Performance Over Time
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if attempts %}
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Data Available</h5>
+                    <p class="text-muted">Complete some quizzes to see your performance chart</p>
+                    <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">
+                        <i class="fas fa-play me-2"></i>Start Your First Quiz
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Recommendations -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-gradient-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>AI Recommendations
+                </h5>
             </div>
             <div class="card-body">
                 {% if current_recommendations %}
-                <ul class="list-group list-group-flush">
+                <div class="recommendations-list">
                     {% for recommendation in current_recommendations %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ recommendation }}
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-outline-primary" onclick="followRecommendation('take_quiz')">
-                                Take Quiz
-                            </button>
-                            <button class="btn btn-sm btn-outline-success" onclick="followRecommendation('get_help')">
-                                Get Help
-                            </button>
+                    <div class="recommendation-item mb-3 p-3 bg-light rounded-3">
+                        <div class="d-flex align-items-start">
+                            <div class="recommendation-icon me-3">
+                                <i class="fas fa-{{ 'brain' if 'study' in recommendation.lower() else 'book' if 'quiz' in recommendation.lower() else 'chart-line' }} text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="mb-2 small">{{ recommendation }}</p>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="followRecommendation('take_quiz')">
+                                        <i class="fas fa-play me-1"></i>Quiz
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="followRecommendation('get_help')">
+                                        <i class="fas fa-question-circle me-1"></i>Help
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </li>
+                    </div>
                     {% endfor %}
-                </ul>
+                </div>
                 {% else %}
-                <p class="text-muted">Complete a quiz to get personalized recommendations!</p>
-                <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary">Take Your First Quiz</a>
+                <div class="text-center py-4">
+                    <i class="fas fa-lightbulb fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No Recommendations Yet</h6>
+                    <p class="text-muted small">Complete a quiz to get personalized recommendations!</p>
+                    <a href="{{ url_for('quiz_selection') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>Take Quiz
+                    </a>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -69,47 +181,85 @@
 
 <!-- Quiz History -->
 {% if attempts %}
-<div class="row mt-4">
+<div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Quiz History</h5>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-gradient-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Quiz History
+                </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th>Quiz</th>
-                                <th>Score</th>
-                                <th>Performance Level</th>
-                                <th>Date</th>
-                                <th>Actions</th>
+                                <th class="border-0">
+                                    <i class="fas fa-question-circle me-2 text-primary"></i>Quiz
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-chart-bar me-2 text-success"></i>Score
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-star me-2 text-warning"></i>Performance
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-calendar me-2 text-info"></i>Date
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-cog me-2 text-secondary"></i>Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for attempt in attempts %}
-                            <tr>
-                                <td>{{ attempt.quiz.title }}</td>
-                                <td>
+                            <tr class="quiz-history-row">
+                                <td class="border-0">
                                     <div class="d-flex align-items-center">
-                                        <div class="progress me-2" style="width: 100px; height: 8px;">
+                                        <div class="quiz-icon me-3">
+                                            <i class="fas fa-{{ 'brain' if 'ai' in attempt.quiz.title.lower() else 'book' if 'math' in attempt.quiz.title.lower() else 'flask' if 'science' in attempt.quiz.title.lower() else 'code' }} text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">{{ attempt.quiz.title }}</h6>
+                                            <small class="text-muted">{{ attempt.quiz.difficulty.title() }} Level</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="border-0">
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress me-3" style="width: 80px; height: 8px;">
                                             <div class="progress-bar bg-{{ 'success' if attempt.score >= 80 else 'warning' if attempt.score >= 60 else 'danger' }}" 
                                                  style="width: {{ attempt.score }}%"></div>
                                         </div>
-                                        <span>{{ attempt.score }}%</span>
+                                        <span class="fw-bold">{{ attempt.score }}%</span>
                                     </div>
                                 </td>
-                                <td>
-                                    <span class="badge bg-{{ 'success' if attempt.predicted_performance == 'excellent' else 'primary' if attempt.predicted_performance == 'good' else 'warning' if attempt.predicted_performance == 'needs_improvement' else 'danger' }}">
+                                <td class="border-0">
+                                    <span class="badge bg-{{ 'success' if attempt.predicted_performance == 'excellent' else 'primary' if attempt.predicted_performance == 'good' else 'warning' if attempt.predicted_performance == 'needs_improvement' else 'danger' }} performance-badge">
+                                        <i class="fas fa-{{ 'trophy' if attempt.predicted_performance == 'excellent' else 'medal' if attempt.predicted_performance == 'good' else 'exclamation-triangle' }} me-1"></i>
                                         {{ attempt.predicted_performance.replace('_', ' ').title() if attempt.predicted_performance else 'Processing...' }}
                                     </span>
                                 </td>
-                                <td>{{ attempt.completed_at.strftime('%Y-%m-%d') }}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-info" onclick="showDetails({{ attempt.id }})">
-                                        View Details
-                                    </button>
+                                <td class="border-0">
+                                    <div class="text-muted small">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ attempt.completed_at.strftime('%b %d, %Y') if attempt.completed_at else 'Incomplete' }}
+                                        {% if attempt.completed_at %}
+                                        <br><small>{{ attempt.completed_at.strftime('%H:%M') }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="border-0">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button class="btn btn-outline-primary btn-sm" onclick="showDetails({{ attempt.id }})">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </button>
+                                        {% if attempt.score < 70 %}
+                                        <button class="btn btn-outline-warning btn-sm" onclick="retakeQuiz({{ attempt.quiz.id }})">
+                                            <i class="fas fa-redo me-1"></i>Retake
+                                        </button>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -120,6 +270,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Performance Chart -->
 <div class="row mt-4">
@@ -135,51 +286,173 @@
     </div>
 </div>
 
-<script>
-// Performance Chart
-const ctx = document.getElementById('performanceChart').getContext('2d');
-const chartData = {
-    labels: [{% for attempt in attempts|reverse %}'{{ attempt.quiz.title[:10] + "..." if attempt.quiz.title|length > 10 else attempt.quiz.title }}'{{ "," if not loop.last }}{% endfor %}],
-    datasets: [{
-        label: 'Score %',
-        data: [{% for attempt in attempts|reverse %}{{ attempt.score }}{{ "," if not loop.last }}{% endfor %}],
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        tension: 0.1
-    }]
-};
+<!-- Enhanced Styles -->
+<style>
+.quiz-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
 
-new Chart(ctx, {
-    type: 'line',
-    data: chartData,
-    options: {
-        responsive: true,
-        scales: {
-            y: {
-                beginAtZero: true,
-                max: 100
-            }
-        }
-    }
+.quiz-history-row {
+    transition: all 0.2s ease;
+}
+
+.quiz-history-row:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    transform: translateX(4px);
+}
+
+.recommendation-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(59, 130, 246, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.recommendation-item {
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.recommendation-item:hover {
+    border-color: rgba(59, 130, 246, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize performance chart if data exists
+    {% if attempts %}
+    initializePerformanceChart();
+    {% endif %}
 });
 
-function followRecommendation(action) {
-    fetch('/recommendations/follow', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
+function initializePerformanceChart() {
+    const ctx = document.getElementById('performanceChart');
+    if (!ctx) return;
+    
+    // Prepare chart data
+    const attempts = {{ attempts|tojson if attempts else '[]' }};
+    const labels = attempts.map((attempt, index) => `Quiz ${index + 1}`);
+    const scores = attempts.map(attempt => attempt.score);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Score (%)',
+                data: scores,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#3b82f6',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
         },
-        body: JSON.stringify({action: action})
-    })
-    .then(response => response.json())
-    .then(data => {
-        window.location.href = data.redirect;
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            return `Score: ${context.parsed.y}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6b7280'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    },
+                    ticks: {
+                        color: '#6b7280',
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            elements: {
+                point: {
+                    hoverBackgroundColor: '#1d4ed8'
+                }
+            }
+        }
     });
 }
 
+function refreshProgress() {
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="loading-spinner me-2"></span>Refreshing...';
+    btn.disabled = true;
+    
+    // Simulate refresh (in real app, this would make an API call)
+    setTimeout(() => {
+        location.reload();
+    }, 1000);
+}
+
+function followRecommendation(action) {
+    if (action === 'take_quiz') {
+        window.location.href = '{{ url_for("quiz_selection") }}';
+    } else if (action === 'get_help') {
+        window.location.href = '{{ url_for("chat_interface") }}';
+    }
+}
+
+function retakeQuiz(quizId) {
+    if (confirm('Are you sure you want to retake this quiz?')) {
+        window.location.href = `/quiz/${quizId}`;
+    }
+}
+
 function showDetails(attemptId) {
-    // Implementation for showing detailed quiz results
-    alert('Detailed view for attempt ' + attemptId + ' - implement as needed');
+    window.location.href = `/quiz/results/${attemptId}`;
 }
 </script>
 {% endif %}

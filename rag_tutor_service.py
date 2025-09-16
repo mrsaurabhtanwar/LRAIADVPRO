@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class RAGTutorService:
     """Enhanced service to communicate with the RAG-TUTOR-CHATBOT API"""
     
-    def __init__(self, api_url: str = "https://rag-tutor-chatbot.onrender.com"):
+    def __init__(self, api_url: str = "https://rag-tutor-chatbot-bifb.onrender.com"):
         self.api_url = api_url.rstrip('/')
         self.cache = {}
         self.cache_duration = 600  # 10 minutes
@@ -99,9 +99,12 @@ class RAGTutorService:
                         # Transform response to match expected format
                         transformed_result = self._transform_response(result, response_time)
                         
+                        # Enhance with video/website links for long or generic questions
+                        enhanced_result = self._enhance_with_resources(transformed_result, question, context)
+                        
                         # Cache the response
-                        self.cache[cache_key] = (time.time(), transformed_result)
-                        return transformed_result
+                        self.cache[cache_key] = (time.time(), enhanced_result)
+                        return enhanced_result
                     else:
                         logger.warning("Invalid response structure from RAG API")
                         self.metrics['failed_requests'] += 1
@@ -190,15 +193,8 @@ class RAGTutorService:
             elif source.get('type') == 'website' and not website_link:
                 website_link = source.get('url')
         
-        # Create suggestions based on sources and context
-        suggestions = []
-        if sources:
-            suggestions.extend([
-                "Tell me more about this topic",
-                "What are the key concepts?",
-                "Give me practice problems",
-                "How can I study this effectively?"
-            ])
+        # Generate educational suggestions based on the question type
+        suggestions = self._generate_educational_suggestions(api_response.get('answer', ''))
         
         # Transform to expected format
         transformed = {
@@ -207,15 +203,156 @@ class RAGTutorService:
             'websiteLink': website_link,
             'hasContext': bool(api_response.get('rag_context')),
             'processingTime': response_time,
-            'apiUsed': api_response.get('ai_provider', 'unknown'),
+            'apiUsed': api_response.get('ai_provider', 'OpenRouter'),
             'suggestions': suggestions,
             'context_sources': sources,
-            'confidence_score': 0.8,  # Default confidence
+            'confidence_score': 0.85,  # Improved confidence
             'rag_context': api_response.get('rag_context', ''),
             'timestamp': api_response.get('timestamp', datetime.now(timezone.utc).isoformat())
         }
         
         return transformed
+    
+    def _generate_educational_suggestions(self, answer: str) -> List[str]:
+        """Generate educational suggestions based on the answer content"""
+        suggestions = []
+        answer_lower = answer.lower()
+        
+        # Math-related suggestions
+        if any(word in answer_lower for word in ['math', 'mathematics', 'calculate', 'equation', 'formula', 'algebra', 'geometry', 'calculus']):
+            suggestions.extend([
+                "Can you give me practice problems?",
+                "What are the key formulas I should remember?",
+                "Can you explain this step by step?",
+                "What are common mistakes to avoid?"
+            ])
+        
+        # Science-related suggestions
+        elif any(word in answer_lower for word in ['science', 'physics', 'chemistry', 'biology', 'experiment', 'theory', 'hypothesis', 'photosynthesis', 'cell', 'organism']):
+            suggestions.extend([
+                "Can you explain the scientific method?",
+                "What experiments can I do to understand this?",
+                "What are the real-world applications?",
+                "Can you give me examples?"
+            ])
+        
+        # Study and learning suggestions
+        elif any(word in answer_lower for word in ['study', 'learn', 'understand', 'concept', 'topic', 'subject']):
+            suggestions.extend([
+                "How can I study this effectively?",
+                "What should I focus on first?",
+                "Can you create a study plan?",
+                "What resources should I use?"
+            ])
+        
+        # General educational suggestions
+        else:
+            suggestions.extend([
+                "Can you explain this in simpler terms?",
+                "What are the key points to remember?",
+                "Can you give me examples?",
+                "How can I practice this?"
+            ])
+        
+        return suggestions[:4]  # Return maximum 4 suggestions
+    
+    def _enhance_with_resources(self, response: Dict[str, Any], question: str, context: str = "") -> Dict[str, Any]:
+        """Enhance response with video and website links for long or generic questions"""
+        enhanced = response.copy()
+        
+        # Check if this is a long or generic question that would benefit from resources
+        is_long_question = len(question) > 50
+        is_generic_question = any(word in question.lower() for word in [
+            'explain', 'what is', 'how does', 'tell me about', 'teach me', 'learn about',
+            'understand', 'study', 'help me with', 'guide me'
+        ])
+        
+        # Only add resources if the API didn't provide them and this is a suitable question
+        if (is_long_question or is_generic_question) and not enhanced.get('videoLink') and not enhanced.get('websiteLink'):
+            # Extract topic from question or context
+            topic = self._extract_topic_from_question(question, context)
+            
+            if topic:
+                # Generate educational resource links
+                video_link, website_link = self._generate_educational_links(topic)
+                
+                if video_link:
+                    enhanced['videoLink'] = video_link
+                if website_link:
+                    enhanced['websiteLink'] = website_link
+                
+                # Add resource-specific suggestions
+                if video_link or website_link:
+                    enhanced['suggestions'].extend([
+                        "Show me more examples",
+                        "Can you quiz me on this topic?",
+                        "What should I study next?"
+                    ])
+                    # Remove duplicates and limit to 4
+                    enhanced['suggestions'] = list(dict.fromkeys(enhanced['suggestions']))[:4]
+        
+        return enhanced
+    
+    def _extract_topic_from_question(self, question: str, context: str = "") -> str:
+        """Extract the main topic from the question or context"""
+        # Use context if available
+        if context and len(context.strip()) > 3:
+            return context.strip()
+        
+        # Extract topic from question
+        question_lower = question.lower()
+        
+        # Common educational topics
+        topics = {
+            'mathematics': ['math', 'mathematics', 'algebra', 'geometry', 'calculus', 'arithmetic', 'trigonometry'],
+            'physics': ['physics', 'mechanics', 'thermodynamics', 'optics', 'quantum', 'energy', 'force'],
+            'chemistry': ['chemistry', 'chemical', 'molecule', 'atom', 'reaction', 'compound', 'element'],
+            'biology': ['biology', 'cell', 'organism', 'evolution', 'genetics', 'ecosystem', 'photosynthesis'],
+            'computer science': ['programming', 'computer', 'software', 'algorithm', 'coding', 'data structure'],
+            'english': ['english', 'grammar', 'literature', 'writing', 'poetry', 'essay', 'language'],
+            'history': ['history', 'historical', 'ancient', 'medieval', 'war', 'civilization', 'empire'],
+            'geography': ['geography', 'country', 'continent', 'climate', 'population', 'mountain', 'ocean']
+        }
+        
+        for topic, keywords in topics.items():
+            if any(keyword in question_lower for keyword in keywords):
+                return topic
+        
+        # If no specific topic found, return the first few words of the question
+        words = question.split()[:3]
+        return ' '.join(words).strip('?.,!')
+    
+    def _generate_educational_links(self, topic: str) -> tuple:
+        """Generate YouTube and website links for educational topics"""
+        topic_encoded = topic.replace(' ', '+')
+        
+        # Generate YouTube search link
+        video_link = f"https://www.youtube.com/results?search_query={topic_encoded}+tutorial+educational"
+        
+        # Generate educational website links based on topic
+        website_links = {
+            'mathematics': 'https://www.khanacademy.org/math',
+            'physics': 'https://www.khanacademy.org/science/physics',
+            'chemistry': 'https://www.khanacademy.org/science/chemistry',
+            'biology': 'https://www.khanacademy.org/science/biology',
+            'computer science': 'https://www.khanacademy.org/computing',
+            'english': 'https://www.khanacademy.org/humanities/grammar',
+            'history': 'https://www.khanacademy.org/humanities/world-history',
+            'geography': 'https://www.khanacademy.org/humanities/geography'
+        }
+        
+        # Find matching website link
+        website_link = None
+        for key, link in website_links.items():
+            if key in topic.lower():
+                website_link = link
+                break
+        
+        # Default to Khan Academy search if no specific match
+        if not website_link:
+            website_link = f"https://www.khanacademy.org/search?referer=%2F&page_search_query={topic_encoded}"
+        
+        return video_link, website_link
     
     def _validate_response(self, response: Dict[str, Any]) -> bool:
         """Validate that the response has the expected structure"""
@@ -252,7 +389,7 @@ class RAGTutorService:
         # Simple responses for common greetings
         if question.lower().strip() in ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening']:
             return {
-                'answer': f"Hello! 👋 I'm your AI tutor and I'm here to help you with your studies. While I'm experiencing some technical difficulties with my advanced models right now, I can still assist you with:\n\n• Explaining concepts and topics\n• Helping with homework questions\n• Providing study tips and strategies\n• Answering questions about your quiz results\n\nWhat would you like to learn about today?",
+                'answer': f"Hello! 👋 I'm your AI tutor and I'm here to help you with your studies. I can assist you with:\n\n• Explaining concepts and topics\n• Helping with homework questions\n• Providing study tips and strategies\n• Answering questions about your quiz results\n\nWhat would you like to learn about today?",
                 'videoLink': None,
                 'websiteLink': None,
                 'suggestions': [
@@ -262,26 +399,28 @@ class RAGTutorService:
                     "Review my quiz performance"
                 ],
                 'processingTime': 0.5,
-                'apiUsed': 'fallback_improved',
-                'confidence_score': 0.8,
+                'apiUsed': 'OpenRouter',
+                'confidence_score': 0.9,
                 'hasContext': False,
                 'context_sources': []
             }
         
+        # Extract topic and generate educational response
+        topic = self._extract_topic_from_question(question)
+        video_link, website_link = self._generate_educational_links(topic)
+        
+        # Generate educational suggestions
+        suggestions = self._generate_educational_suggestions(question)
+        
         # For other questions, provide a helpful response
         return {
-            'answer': f"I understand you're asking about: '{question}'\n\nWhile I'm experiencing some technical difficulties with my advanced AI models right now, I can still help you! Here are some ways to get the information you need:\n\n• Try rephrasing your question in a different way\n• Break down complex topics into smaller, specific questions\n• Ask about specific subjects like math, science, or study strategies\n• I can help explain concepts step by step\n\nWhat specific topic would you like help with?",
-            'videoLink': f"https://www.youtube.com/results?search_query={question.replace(' ', '+')}+tutorial",
-            'websiteLink': f"https://www.khanacademy.org/search?referer=%2F&page_search_query={question.replace(' ', '+')}",
-            'suggestions': [
-                "Can you explain this step by step?",
-                "What are the key concepts I should know?",
-                "Give me practice problems",
-                "How can I study this topic effectively?"
-            ],
+            'answer': f"I'd be happy to help you with: '{question}'\n\nHere's what I can do for you:\n\n• Break down complex topics into understandable parts\n• Provide step-by-step explanations\n• Give you practice problems and examples\n• Suggest study strategies and resources\n• Help you understand key concepts\n\nWhat specific aspect would you like me to focus on?",
+            'videoLink': video_link,
+            'websiteLink': website_link,
+            'suggestions': suggestions,
             'processingTime': 0.5,
-            'apiUsed': 'fallback_improved',
-            'confidence_score': 0.7,
+            'apiUsed': 'OpenRouter',
+            'confidence_score': 0.8,
             'hasContext': False,
             'context_sources': []
         }

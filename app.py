@@ -1,8 +1,7 @@
 # app.py - Educational Platform with External AI Tutor Integration
 import logging
-import requests
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -34,16 +33,12 @@ else:
 from extensions import db
 db.init_app(app)
 
-# Quiz generation is now handled by quiz_generator_service
-
 # Import models
 from models import (
     Student, Quiz, QuizAttempt, ChatSession, ChatMessage, 
     StudentRecommendation,
     StudentProfile, MLPrediction, Topic, AIInteraction
 )
-
-# Quiz generation is now handled by quiz_generator_service
 
 # Import and initialize RAG tutor service
 from rag_tutor_service import rag_tutor_service
@@ -71,8 +66,6 @@ def from_json_filter(value: str) -> Any:
 app.jinja_env.globals['abs'] = abs
 
 # ===================== SECURITY DECORATORS =====================
-
-from typing import Callable
 
 
 def login_required(f: Callable) -> Callable:
@@ -520,7 +513,11 @@ def submit_answer(question_num):
     # Record first response time if not already set
     if 'first_response_time' not in timing_data and question_num == 1:
         if hasattr(attempt, 'started_at') and attempt.started_at:
-            first_response_time = (current_time - attempt.started_at).total_seconds() * 1000
+            # Ensure both datetimes are timezone-aware for comparison
+            started_at = attempt.started_at
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=timezone.utc)
+            first_response_time = (current_time - started_at).total_seconds() * 1000
             timing_data['first_response_time'] = first_response_time
     
     # Update timing data
@@ -563,7 +560,11 @@ def complete_quiz():
     
     # Record total duration for ML analysis
     if hasattr(attempt, 'started_at') and attempt.started_at:
-        total_duration = (completion_time - attempt.started_at).total_seconds() * 1000
+        # Ensure both datetimes are timezone-aware for comparison
+        started_at = attempt.started_at
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        total_duration = (completion_time - started_at).total_seconds() * 1000
         timing_data = json.loads(attempt.timing_data_json or '{}')
         timing_data['total_duration'] = total_duration
         attempt.timing_data_json = json.dumps(timing_data)
@@ -592,14 +593,15 @@ def complete_quiz():
                 # If correct_answer appears to be full text, try to map to an option id
                 if 'options' in question:
                     for o in question['options']:
-                        if o.get('text') and isinstance(ca, str) and ca.strip().lower() == o.get('text').strip().lower():
-                            correct_id = o.get('id')
+                        option_text = o if isinstance(o, str) else o.get('text', '')
+                        if option_text and isinstance(ca, str) and ca.strip().lower() == option_text.strip().lower():
+                            correct_id = o.get('id') if isinstance(o, dict) else None
                             break
                 if not correct_id:
                     correct_text = str(ca)
         elif 'options' in question:
             for option in question['options']:
-                if option.get('is_correct', False):
+                if isinstance(option, dict) and option.get('is_correct', False):
                     correct_id = option.get('id')
                     correct_text = option.get('text', option.get('option_text', ''))
                     break
@@ -615,7 +617,8 @@ def complete_quiz():
                     # Fallback: map letter to option text and compare
                     option_index = ord(ua.upper()) - ord('A')
                     if 'options' in question and option_index < len(question['options']):
-                        user_answer_text = question['options'][option_index].get('text', '')
+                        option = question['options'][option_index]
+                        user_answer_text = option if isinstance(option, str) else option.get('text', '')
                         if correct_text:
                             is_correct = user_answer_text.strip().lower() == correct_text.strip().lower()
             else:
@@ -624,7 +627,7 @@ def complete_quiz():
                     is_correct = ua.strip().lower() == correct_text.strip().lower()
                 elif correct_id and 'options' in question:
                     for o in question['options']:
-                        if o.get('id') == correct_id:
+                        if isinstance(o, dict) and o.get('id') == correct_id:
                             is_correct = ua.strip().lower() == o.get('text', '').strip().lower()
                             break
         
@@ -722,14 +725,15 @@ def generate_fallback_analysis(attempt, quiz):
                 # map full text to option id if possible
                 if 'options' in question:
                     for o in question['options']:
-                        if o.get('text') and isinstance(ca, str) and ca.strip().lower() == o.get('text').strip().lower():
-                            correct_id = o.get('id')
+                        option_text = o if isinstance(o, str) else o.get('text', '')
+                        if option_text and isinstance(ca, str) and ca.strip().lower() == option_text.strip().lower():
+                            correct_id = o.get('id') if isinstance(o, dict) else None
                             break
                 if not correct_id:
                     correct_text = str(ca)
         elif 'options' in question:
             for option in question['options']:
-                if option.get('is_correct', False):
+                if isinstance(option, dict) and option.get('is_correct', False):
                     correct_id = option.get('id')
                     correct_text = option.get('text', option.get('option_text', ''))
                     break
@@ -745,13 +749,15 @@ def generate_fallback_analysis(attempt, quiz):
                     # map letter to option text
                     idx = ord(ua.upper()) - ord('A')
                     if 'options' in question and idx < len(question['options']):
-                        is_correct = question['options'][idx].get('text', '').strip().lower() == (correct_text or '').strip().lower()
+                        option = question['options'][idx]
+                        option_text = option if isinstance(option, str) else option.get('text', '')
+                        is_correct = option_text.strip().lower() == (correct_text or '').strip().lower()
             else:
                 if correct_text:
                     is_correct = ua.lower() == correct_text.strip().lower()
                 elif correct_id and 'options' in question:
                     for o in question['options']:
-                        if o.get('id') == correct_id:
+                        if isinstance(o, dict) and o.get('id') == correct_id:
                             is_correct = ua.lower() == o.get('text', '').strip().lower()
                             break
         
@@ -872,14 +878,6 @@ def complete_recommendation(rec_id):
     return redirect(request.referrer or url_for('dashboard'))
 
 # ===================== QUIZ GENERATION ROUTES =====================
-
-# Old quiz generation form removed - now using API-based generation
-
-# Old generate_quiz function removed - now using /api/quiz-generator/generate
-
-# Old hint function removed - hints are now handled by the AI tutor
-
-# Old quiz API health endpoint removed - now using /api/quiz-generator/health
 
 @app.route('/api/ml/health')
 def ml_api_health():
@@ -1023,6 +1021,18 @@ def quiz_generator_metrics():
     metrics = quiz_generator_service.get_metrics()
     return jsonify(metrics)
 
+@app.route('/api/quiz-generator/topics')
+def get_quiz_topics():
+    """Get available quiz topics"""
+    topics_data = quiz_generator_service.get_available_topics()
+    return jsonify(topics_data)
+
+@app.route('/generate-quiz')
+@login_required
+def generate_quiz_form():
+    """Show quiz generation form"""
+    return render_template('quiz_generation.html')
+
 @app.route('/api/quiz-generator/generate', methods=['POST'])
 @login_required
 def generate_quiz_questions():
@@ -1047,9 +1057,49 @@ def generate_quiz_questions():
         if question_type not in ['mcq', 'short']:
             return jsonify({'error': 'Question type must be mcq or short'}), 400
         
+        # Map topics to AI-friendly names for better generation
+        topic_mapping = {
+            'computer science': 'programming',
+            'cs': 'programming',
+            'mathematics': 'advanced mathematics',
+            'math': 'advanced mathematics',
+            'physics': 'theoretical physics',
+            'chemistry': 'organic chemistry',
+            'biology': 'molecular biology',
+            'cybersecurity': 'information security',
+            'artificial intelligence': 'machine learning',
+            'ai': 'machine learning',
+            'data science': 'data analytics',
+            'astronomy': 'space science',
+            'quantum physics': 'quantum mechanics',
+            'robotics': 'automation systems',
+            'english': 'literature analysis'
+        }
+        
+        # Apply topic mapping to get better AI generation
+        mapped_topics = []
+        for topic in topics:
+            mapped_topic = topic_mapping.get(topic.lower(), topic)
+            mapped_topics.append(mapped_topic)
+        
         # Get student behavior data for personalization
         student_id = session.get('user_id')
-        student_behavior = None
+        # Default student behavior for all cases
+        student_behavior = {
+            "hint_count": 2.0,
+            "bottom_hint": 0.0,
+            "attempt_count": 2.0,
+            "ms_first_response": 5000.0,
+            "duration": 1200.0,
+            "action_count": 5.0,
+            "hint_dependency": 0.3,
+            "response_speed": "medium",
+            "efficiency_indicator": 0.6,  # Convert to float
+            "confidence_balance": 0.5,
+            "engagement_ratio": 0.7,
+            "avg_score": 0.0,
+            "avg_completion_time": 0.0
+        }
         
         if student_id:
             # Get recent quiz performance for personalization
@@ -1062,7 +1112,22 @@ def generate_quiz_questions():
                 # Calculate behavior metrics
                 total_attempts = len(recent_attempts)
                 avg_score = sum(attempt.score for attempt in recent_attempts if attempt.score) / total_attempts
-                avg_time = sum(attempt.completion_time for attempt in recent_attempts if attempt.completion_time) / total_attempts
+                # Calculate average completion time in seconds
+                completed_attempts = [attempt for attempt in recent_attempts if attempt.completed_at and attempt.started_at]
+                if completed_attempts:
+                    total_duration = 0
+                    for attempt in completed_attempts:
+                        started_at = attempt.started_at
+                        completed_at = attempt.completed_at
+                        if started_at.tzinfo is None:
+                            started_at = started_at.replace(tzinfo=timezone.utc)
+                        if completed_at.tzinfo is None:
+                            completed_at = completed_at.replace(tzinfo=timezone.utc)
+                        duration = (completed_at - started_at).total_seconds()
+                        total_duration += duration
+                    avg_time = total_duration / len(completed_attempts)
+                else:
+                    avg_time = 0
                 
                 # Calculate behavior metrics in the format expected by the API
                 hint_count = max(1, min(5, int((100 - avg_score) / 20))) if avg_score else 2
@@ -1076,6 +1141,10 @@ def generate_quiz_questions():
                 confidence_balance = max(0, min(1, (avg_score - 30) / 70)) if avg_score else 0.5
                 engagement_ratio = max(0, min(1, avg_score / 100)) if avg_score else 0.7
                 
+                # Convert response_speed to string and add efficiency_indicator
+                response_speed_str = "fast" if response_speed > 0.7 else "medium" if response_speed > 0.4 else "slow"
+                efficiency_indicator = 0.9 if avg_score > 80 else 0.6 if avg_score > 60 else 0.3  # Convert to float
+                
                 student_behavior = {
                     "hint_count": float(hint_count),
                     "bottom_hint": float(bottom_hint),
@@ -1084,16 +1153,18 @@ def generate_quiz_questions():
                     "duration": float(duration),
                     "action_count": float(action_count),
                     "hint_dependency": hint_dependency,
-                    "response_speed": response_speed,
+                    "response_speed": response_speed_str,  # Convert to string
+                    "efficiency_indicator": efficiency_indicator,  # Add missing field
                     "confidence_balance": confidence_balance,
                     "engagement_ratio": engagement_ratio,
                     "avg_score": avg_score,
                     "avg_completion_time": avg_time
                 }
+            # If no recent attempts, keep the default behavior set above
         
         # Generate quiz questions
         result = quiz_generator_service.generate_quiz(
-            topics=topics,
+            topics=mapped_topics,
             difficulty=difficulty,
             n_questions=n_questions,
             question_type=question_type,
@@ -1123,11 +1194,40 @@ def generate_quiz_questions():
             app.logger.error(f"Error storing quiz generation: {e}")
             db.session.rollback()
         
+        # Create a Quiz object from the generated questions
+        try:
+            quiz = Quiz(
+                title=f"AI Generated Quiz - {', '.join(topics)}",
+                description=f"AI-generated quiz on {', '.join(topics)} with {n_questions} {difficulty} questions",
+                topic=', '.join(topics),
+                difficulty=difficulty,
+                content_source_type='ai_generated',
+                content_source_data=json.dumps(result),
+                creator_id=None,  # Set to None since we don't have a users.id
+                questions_json=json.dumps(result.get('questions', [])),
+                is_active=True,
+                max_score=100
+            )
+            db.session.add(quiz)
+            db.session.commit()
+            
+            # Add quiz ID to the result
+            result['quiz_id'] = quiz.id
+            result['quiz_url'] = url_for('start_quiz', quiz_id=quiz.id)
+            
+        except Exception as e:
+            app.logger.error(f"Error creating quiz object: {e}")
+            app.logger.error(f"Quiz creation error details: {str(e)}")
+            db.session.rollback()
+        
         return jsonify(result)
         
     except Exception as e:
         app.logger.error(f"Error generating quiz: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        app.logger.error(f"Quiz generation error details: {str(e)}")
+        import traceback
+        app.logger.error(f"Traceback: {traceback.format_exc()}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 @app.route('/api/ai/suggestions')
 @login_required
@@ -1298,6 +1398,11 @@ def chat_interface():
     """AI tutor chat interface"""
     student = Student.query.get(session['user_id'])
     
+    # Check if student exists
+    if not student:
+        flash('Student not found. Please log in again.', 'error')
+        return redirect(url_for('login'))
+    
     # Get or create chat session
     active_session = ChatSession.query.filter_by(
         student_id=student.id,
@@ -1405,6 +1510,19 @@ def get_ai_response_with_rag(student_message, chat_session, context=""):
     try:
         # Get student context
         student = Student.query.get(chat_session.student_id)
+        
+        # Check if student exists
+        if not student:
+            return {
+                'answer': "I'm sorry, but I couldn't find your student profile. Please log in again.",
+                'error': 'Student not found',
+                'videoLink': None,
+                'websiteLink': None,
+                'suggestions': [],
+                'processingTime': 0,
+                'apiUsed': 'error',
+                'confidence_score': 0.0
+            }
         
         # Get recent quiz performance for context
         recent_attempts = QuizAttempt.query.filter_by(
@@ -1707,7 +1825,7 @@ if __name__ == '__main__':
     
     print("Educational Platform starting...")
     print("✅ External AI Tutor API integrated")
-    print("🌐 Chatbot API: https://rag-tutor-chatbot.onrender.com/")
+    print("🌐 Chatbot API: https://rag-tutor-chatbot-bifb.onrender.com/")
     print("🚀 Access your app at: http://127.0.0.1:5001")
     
     app.run(debug=True, port=5001)

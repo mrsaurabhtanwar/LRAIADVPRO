@@ -1,0 +1,6 @@
+question,options,correct_answer,answer_index,explanation
+What is the value of x in the equation 2x + 5 = 13?,"[""3"", ""4"", ""5"", ""6""]",4,1,Solve: 2x + 5 = 13, so 2x = 8, therefore x = 4.
+What is the area of a rectangle with length 6 and width 4?,"[""20"", ""24"", ""28"", ""32""]",24,1,Area = length × width = 6 × 4 = 24 square units.
+What is 15% of 200?,"[""25"", ""30"", ""35"", ""40""]",30,1,15% of 200 = 0.15 × 200 = 30.
+What is the square root of 64?,"[""6"", ""7"", ""8"", ""9""]",8,2,8 × 8 = 64, so the square root of 64 is 8.
+What is the slope of the line y = 2x + 3?,"[""2"", ""3"", ""5"", ""6""]",2,0,In the equation y = mx + b, m is the slope. Here m = 2.

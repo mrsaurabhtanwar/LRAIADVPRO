@@ -74,7 +74,7 @@
                                 <div class="form-check mb-3 option-card" data-option="{{ loop.index }}">
                                     <input class="form-check-input" type="radio" name="answer" 
                                            id="option{{ loop.index }}" 
-                                           value="{{ option.text if option.text is defined else (option.option_text if option.option_text is defined else (option if option is string else '')) }}" 
+                                           value="{{ option if option is string else (option.text if option.text is defined else (option.option_text if option.option_text is defined else '')) }}" 
                                            required>
                                     <label class="form-check-label w-100 cursor-pointer" for="option{{ loop.index }}">
                                         <div class="d-flex align-items-center">
@@ -82,7 +82,7 @@
                                                 <span class="badge bg-light text-dark border">{{ (64 + loop.index) | chr }}</span>
                                             </div>
                                             <div class="option-text flex-grow-1">
-                                                {{ option.text if option.text is defined else (option.option_text if option.option_text is defined else (option if option is string else 'Invalid option format')) }}
+                                                {{ option if option is string else (option.text if option.text is defined else (option.option_text if option.option_text is defined else 'Invalid option format')) }}
                                             </div>
                                         </div>
                                     </label>
@@ -114,6 +114,10 @@
                                     <div>
                                         <h6 class="alert-heading mb-2">No Options Available</h6>
                                         <p class="mb-0">This question doesn't have multiple choice options. Please contact support.</p>
+                                        <details class="mt-2">
+                                            <summary class="text-muted small">Debug Info</summary>
+                                            <pre class="small text-muted mt-2">{{ question | tojson(indent=2) }}</pre>
+                                        </details>
                                     </div>
                                 </div>
                             </div>
@@ -123,10 +127,16 @@
                         <div class="d-flex justify-content-between align-items-center pt-3 border-top">
                             <div class="quiz-hints">
                                 {% if quiz and quiz.id %}
-                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="getHint({{ quiz.id }}, {{ question_num }})">
+                                    <button type="button" class="btn btn-outline-info btn-sm me-2" onclick="getHint({{ quiz.id }}, {{ question_num }})">
                                         <i class="fas fa-lightbulb me-1"></i>Get Hint
                                     </button>
                                 {% endif %}
+                                <button type="button" class="btn btn-outline-warning btn-sm me-2" onclick="showAnswer()" id="showAnswerBtn">
+                                    <i class="fas fa-eye me-1"></i>Show Answer
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="skipQuestion()" id="skipBtn">
+                                    <i class="fas fa-forward me-1"></i>Skip
+                                </button>
                             </div>
                             
                             <div class="quiz-actions">
@@ -173,6 +183,86 @@
     </div>
 </div>
 
+<!-- Answer Reveal Modal -->
+<div class="modal fade" id="answerModal" tabindex="-1" aria-labelledby="answerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="answerModalLabel">
+                    <i class="fas fa-eye me-2"></i>Answer Revealed
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> You can still select your own answer below, or choose the correct answer. The correct answer is now visible for learning purposes.
+                </div>
+                
+                <div class="correct-answer-section mb-4">
+                    <h6 class="text-success fw-bold mb-3">
+                        <i class="fas fa-check-circle me-2"></i>Correct Answer:
+                    </h6>
+                    <div class="correct-answer-display p-3 bg-success bg-opacity-10 border border-success rounded">
+                        <span id="correctAnswerText" class="fw-bold text-success"></span>
+                    </div>
+                </div>
+                
+                <div class="explanation-section" id="explanationSection" style="display: none;">
+                    <h6 class="text-primary fw-bold mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>Explanation:
+                    </h6>
+                    <div class="explanation-display p-3 bg-primary bg-opacity-10 border border-primary rounded">
+                        <span id="explanationText"></span>
+                    </div>
+                </div>
+                
+                <div class="options-comparison mt-4">
+                    <h6 class="text-muted fw-bold mb-3">All Options:</h6>
+                    <div id="optionsComparison"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary" onclick="selectCorrectAnswer()">
+                    <i class="fas fa-check me-1"></i>Select Correct Answer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Skip Confirmation Modal -->
+<div class="modal fade" id="skipModal" tabindex="-1" aria-labelledby="skipModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="skipModalLabel">
+                    <i class="fas fa-forward me-2"></i>Skip Question
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Are you sure you want to skip this question?</strong>
+                </div>
+                <p>This question will be marked as unanswered and you'll move to the next question. You can still go back to it later if needed.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-warning" onclick="confirmSkip()">
+                    <i class="fas fa-forward me-1"></i>Yes, Skip Question
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Enhanced Styles -->
 <style>
 .bg-gradient {
@@ -180,23 +270,52 @@
 }
 
 .option-card {
-    transition: all 0.2s ease;
-    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    border: 2px solid #e2e8f0;
     border-radius: 12px;
-    padding: 1rem;
-    background: rgba(248, 250, 252, 0.8);
+    padding: 1.25rem;
+    background: #ffffff;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .option-card:hover {
-    border-color: rgba(59, 130, 246, 0.3);
+    border-color: #3b82f6;
     background: rgba(59, 130, 246, 0.05);
-    transform: translateX(4px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
 .option-card:has(.form-check-input:checked) {
-    border-color: var(--bs-primary);
+    border-color: #3b82f6;
     background: rgba(59, 130, 246, 0.1);
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.option-card .form-check-input {
+    margin-top: 0.25rem;
+    transform: scale(1.2);
+}
+
+.option-card .form-check-label {
+    cursor: pointer;
+    margin-left: 0.5rem;
+}
+
+.option-letter .badge {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.option-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #374151;
 }
 
 .confidence-container {
@@ -214,6 +333,39 @@
 .question-text {
     font-size: 1.1rem;
     color: #1e293b;
+}
+
+.correct-answer-revealed {
+    border-color: #28a745 !important;
+    background: rgba(40, 167, 69, 0.1) !important;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2) !important;
+}
+
+.correct-answer-revealed .option-text {
+    color: #28a745 !important;
+    font-weight: bold !important;
+}
+
+.correct-answer-revealed::after {
+    content: " ✓";
+    color: #28a745;
+    font-weight: bold;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.option-card {
+    position: relative;
+}
+
+.answer-revealed .option-card {
+    opacity: 0.7;
+}
+
+.answer-revealed .option-card.correct-answer-revealed {
+    opacity: 1;
 }
 </style>
 
@@ -280,6 +432,131 @@ function getHint(quizId, questionNum) {
         .catch(error => {
             console.error('Error getting hint:', error);
         });
+}
+
+// Show Answer functionality
+function showAnswer() {
+    const question = {{ question | tojson }};
+    const correctAnswer = question.correct_answer || question.answer || 'No correct answer available';
+    const explanation = question.explanation || '';
+    const options = question.options || [];
+    
+    // Update modal content
+    document.getElementById('correctAnswerText').textContent = correctAnswer;
+    
+    // Show explanation if available
+    const explanationSection = document.getElementById('explanationSection');
+    const explanationText = document.getElementById('explanationText');
+    if (explanation && explanation.trim()) {
+        explanationText.textContent = explanation;
+        explanationSection.style.display = 'block';
+    } else {
+        explanationSection.style.display = 'none';
+    }
+    
+    // Show all options with correct one highlighted
+    const optionsComparison = document.getElementById('optionsComparison');
+    optionsComparison.innerHTML = '';
+    
+    options.forEach((option, index) => {
+        const optionText = typeof option === 'string' ? option : (option.text || option.option_text || option);
+        const isCorrect = optionText === correctAnswer;
+        
+        const optionDiv = document.createElement('div');
+        optionDiv.className = `d-flex align-items-center p-2 mb-2 rounded ${isCorrect ? 'bg-success bg-opacity-20 border border-success' : 'bg-light border'}`;
+        
+        optionDiv.innerHTML = `
+            <div class="option-letter me-3">
+                <span class="badge ${isCorrect ? 'bg-success' : 'bg-secondary'}">${String.fromCharCode(65 + index)}</span>
+            </div>
+            <div class="option-text flex-grow-1 ${isCorrect ? 'fw-bold text-success' : ''}">
+                ${optionText}
+                ${isCorrect ? ' <i class="fas fa-check-circle text-success ms-2"></i>' : ''}
+            </div>
+        `;
+        
+        optionsComparison.appendChild(optionDiv);
+    });
+    
+    // Show the modal
+    const answerModal = new bootstrap.Modal(document.getElementById('answerModal'));
+    answerModal.show();
+    
+    // Disable the show answer button
+    document.getElementById('showAnswerBtn').disabled = true;
+    document.getElementById('showAnswerBtn').innerHTML = '<i class="fas fa-eye-slash me-1"></i>Answer Revealed';
+    
+    // Highlight correct answer in main interface
+    updateOptionCards();
+    
+    // Add answer-revealed class to quiz options container
+    const quizOptions = document.querySelector('.quiz-options');
+    if (quizOptions) {
+        quizOptions.classList.add('answer-revealed');
+    }
+}
+
+// Select correct answer function
+function selectCorrectAnswer() {
+    const question = {{ question | tojson }};
+    const correctAnswer = question.correct_answer || question.answer || '';
+    const options = question.options || [];
+    
+    // Find the correct option and select it
+    options.forEach((option, index) => {
+        const optionText = typeof option === 'string' ? option : (option.text || option.option_text || option);
+        if (optionText === correctAnswer) {
+            const radioButton = document.getElementById(`option${index + 1}`);
+            if (radioButton) {
+                radioButton.checked = true;
+                // Trigger change event to update UI
+                radioButton.dispatchEvent(new Event('change'));
+            }
+        }
+    });
+    
+    // Close the modal
+    const answerModal = bootstrap.Modal.getInstance(document.getElementById('answerModal'));
+    answerModal.hide();
+    
+    // Show success message
+    showAlert('Correct answer selected! You can still change your choice if needed.', 'success');
+}
+
+// Skip question functionality
+function skipQuestion() {
+    const skipModal = new bootstrap.Modal(document.getElementById('skipModal'));
+    skipModal.show();
+}
+
+// Confirm skip
+function confirmSkip() {
+    // Submit form with empty answer to skip
+    const form = document.querySelector('.quiz-form');
+    const answerInput = document.querySelector('input[name="answer"]:checked');
+    
+    if (answerInput) {
+        answerInput.checked = false;
+    }
+    
+    // Submit the form
+    form.submit();
+}
+
+// Update option cards to show correct answer when revealed
+function updateOptionCards() {
+    const question = {{ question | tojson }};
+    const correctAnswer = question.correct_answer || question.answer || '';
+    const options = question.options || [];
+    
+    options.forEach((option, index) => {
+        const optionText = typeof option === 'string' ? option : (option.text || option.option_text || option);
+        const optionCard = document.querySelector(`[data-option="${index + 1}"]`);
+        
+        if (optionCard && optionText === correctAnswer) {
+            optionCard.classList.add('correct-answer-revealed');
+        }
+    });
 }
 </script>
 {% endblock %}

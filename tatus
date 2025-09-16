@@ -1,3 +1,0 @@
-[33mc646464[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Complete AI Integration: ML API, RAG Tutor, and Quiz Generator services
-[33m784a833[m Add Quiz Generation API integration with CSV fallback and enhance templates
-[33mbbafeee[m Fix quiz generator api according to new improvements

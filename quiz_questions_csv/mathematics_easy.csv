@@ -1,0 +1,6 @@
+question,options,correct_answer,answer_index,explanation
+What is 2 + 2?,"[""3"", ""4"", ""5"", ""6""]",4,1,2 + 2 equals 4. This is basic addition.
+What is 5 - 3?,"[""1"", ""2"", ""3"", ""4""]",2,1,5 - 3 equals 2. This is basic subtraction.
+What is 3 × 4?,"[""10"", ""11"", ""12"", ""13""]",12,2,3 × 4 equals 12. This is basic multiplication.
+What is 8 ÷ 2?,"[""3"", ""4"", ""5"", ""6""]",4,1,8 ÷ 2 equals 4. This is basic division.
+What is the next number in the sequence: 2, 4, 6, 8, ?,"[""9"", ""10"", ""11"", ""12""]",10,1,The sequence increases by 2 each time, so the next number is 10.

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class QuizGeneratorService:
     """Enhanced service to communicate with the Quiz Generator API"""
     
-    def __init__(self, api_url: str = "https://rag-tutor-quiz-generator.onrender.com"):
+    def __init__(self, api_url: str = "https://rag-tutor-quiz-generator-6a40.onrender.com"):
         self.api_url = api_url.rstrip('/')
         self.cache = {}
         self.cache_duration = 1800  # 30 minutes for quiz questions
@@ -40,6 +40,25 @@ class QuizGeneratorService:
             'quantum physics', 'robotics'
         }
     
+    def get_available_topics(self) -> Dict[str, Any]:
+        """Get available topics from the API"""
+        try:
+            response = requests.get(f"{self.api_url}/api/topics", timeout=10)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.warning(f"Failed to get topics: {response.status_code}")
+                return {"topics": [], "error": f"API returned {response.status_code}"}
+        except requests.exceptions.ConnectionError:
+            logger.warning("Cannot connect to quiz generator API for topics")
+            return {
+                "topics": ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science"],
+                "error": "Connection error - using default topics"
+            }
+        except Exception as e:
+            logger.error(f"Error getting topics: {e}")
+            return {"topics": [], "error": str(e)}
+
     def generate_quiz(self, topics: List[str], difficulty: str = "medium", 
                      n_questions: int = 5, question_type: str = "mcq",
                      include_explanations: bool = True,
@@ -103,7 +122,8 @@ class QuizGeneratorService:
                         "duration": student_behavior.get("duration", 1200.0),
                         "action_count": student_behavior.get("action_count", 5.0),
                         "hint_dependency": student_behavior.get("hint_dependency", 0.3),
-                        "response_speed": student_behavior.get("response_speed", 0.6),
+                        "response_speed": student_behavior.get("response_speed", "medium"),
+                        "efficiency_indicator": student_behavior.get("efficiency_indicator", 0.6),
                         "confidence_balance": student_behavior.get("confidence_balance", 0.5),
                         "engagement_ratio": student_behavior.get("engagement_ratio", 0.7)
                     }
@@ -196,7 +216,8 @@ class QuizGeneratorService:
                     error_msg = f"Connection error: {str(e)}"
                     logger.error(error_msg)
                     self.metrics['failed_requests'] += 1
-                    return {"error": error_msg}
+                    # Return a fallback response instead of error
+                    return self._generate_fallback_quiz(topics, difficulty, n_questions, question_type, include_explanations)
                     
             except requests.exceptions.RequestException as e:
                 error_msg = f"Request error: {str(e)}"
@@ -211,6 +232,64 @@ class QuizGeneratorService:
                 return {"error": error_msg}
         
         return {"error": "All retry attempts failed"}
+    
+    def _generate_fallback_quiz(self, topics: List[str], difficulty: str, 
+                               n_questions: int, question_type: str, 
+                               include_explanations: bool) -> Dict[str, Any]:
+        """Generate a fallback quiz when API is unavailable"""
+        logger.info("Generating fallback quiz due to API unavailability")
+        
+        # Create simple fallback questions
+        questions = []
+        for i in range(min(n_questions, 5)):  # Limit to 5 questions max
+            topic = topics[0] if topics else "General"
+            
+            if question_type == "mcq":
+                question = {
+                    "id": i + 1,
+                    "question": f"Sample {topic} question {i + 1}?",
+                    "type": "mcq",
+                    "options": ["Option A", "Option B", "Option C", "Option D"],
+                    "correct_answer": "Option A",
+                    "answer_index": 0,
+                    "difficulty": difficulty,
+                    "topic": topic,
+                    "explanation": f"This is a sample {topic} question for demonstration." if include_explanations else None
+                }
+            else:
+                question = {
+                    "id": i + 1,
+                    "question": f"Explain {topic} concept {i + 1}.",
+                    "type": "short",
+                    "correct_answer": f"Sample answer for {topic} concept {i + 1}.",
+                    "difficulty": difficulty,
+                    "topic": topic,
+                    "explanation": f"This is a sample {topic} question for demonstration." if include_explanations else None
+                }
+            
+            questions.append(question)
+        
+        return {
+            "quiz_id": f"fallback_{int(time.time())}",
+            "questions": questions,
+            "total_questions": len(questions),
+            "difficulty": difficulty,
+            "topics": topics,
+            "videoLinks": None,
+            "websiteLinks": None,
+            "processingTime": 0.1,
+            "apiUsed": "fallback",
+            "suggestions": [
+                "This is a sample quiz generated offline.",
+                "The quiz generator API is currently unavailable.",
+                "Please try again later for AI-generated questions."
+            ],
+            "metadata": {
+                "is_fallback": True,
+                "api_unavailable": True,
+                "generated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
     
     def _create_cache_key(self, topics: List[str], difficulty: str, 
                          n_questions: int, question_type: str) -> str:
